@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WAV Player</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        background: #f4f4f4;
+    }
+    h2 { margin-bottom: 20px; }
+    .track {
+        background: white;
+        padding: 14px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    button {
+        padding: 6px 14px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<h2>Wave Files</h2>
+
+<div id="trackList"></div>
+
+<audio id="player" controls style="width:100%; margin-top:25px;"></audio>
+
+<script>
+const tracks = [
+    "Memory Loops.wav",
+    "Shadows Behind Me.wav",
+    "Paper Plane.wav"
+];
+
+const trackListDiv = document.getElementById("trackList");
+const player = document.getElementById("player");
+let currentPlayingButton = null;
+
+tracks.forEach(filename => {
+    const encoded = encodeURIComponent(filename); // 공백/특수문자 안전 처리
+
+    const div = document.createElement("div");
+    div.className = "track";
+
+    const name = document.createElement("span");
+    name.textContent = filename;
+
+    const btn = document.createElement("button");
+    btn.textContent = "Play";
+
+    btn.onclick = () => {
+        if (player.src.includes(encoded) && !player.paused) {
+            player.pause();
+            btn.textContent = "Play";
+        } else {
+            player.src = encoded;
+            player.play();
+            if (currentPlayingButton) currentPlayingButton.textContent = "Play";
+            btn.textContent = "Pause";
+            currentPlayingButton = btn;
+        }
+    };
+
+    div.appendChild(name);
+    div.appendChild(btn);
+    trackListDiv.appendChild(div);
+});
+
+player.onended = () => {
+    if (currentPlayingButton) currentPlayingButton.textContent = "Play";
+};
+</script>
+
+</body>
+</html>
