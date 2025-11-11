@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>WAV Player</title>
+<title>MP3 Player</title>
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -25,21 +25,25 @@
         font-size: 14px;
         cursor: pointer;
     }
+    audio {
+        width: 100%;
+        margin-top: 25px;
+    }
 </style>
 </head>
 <body>
 
-<h2>Wave Files</h2>
+<h2>MP3 Playlist</h2>
 
 <div id="trackList"></div>
 
-<audio id="player" controls style="width:100%; margin-top:25px;"></audio>
+<audio id="player" controls></audio>
 
 <script>
 const tracks = [
-    "Memory Loops.wav",
-    "Shadows Behind Me.wav",
-    "Paper Plane.wav"
+    "Echoes of You.mp3",
+    "Memory Loops.mp3",
+    "Us, Finally.mp3"
 ];
 
 const trackListDiv = document.getElementById("trackList");
@@ -47,7 +51,7 @@ const player = document.getElementById("player");
 let currentPlayingButton = null;
 
 tracks.forEach(filename => {
-    const encoded = encodeURIComponent(filename); // 공백/특수문자 안전 처리
+    const encoded = encodeURIComponent(filename);
 
     const div = document.createElement("div");
     div.className = "track";
