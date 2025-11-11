@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Music Player</title>
+<title>Music Player + PayPal</title>
 <style>
   :root{
     --bg:#0f1724;
@@ -20,60 +20,36 @@
     color: var(--text);
   }
 
-  h1 {
-    text-align: center;
-    margin-bottom: 30px;
-    font-weight: 600;
-  }
+  h1 { text-align:center; margin-bottom:30px; font-weight:600; }
 
   .track-list {
-    max-width: 700px;
-    margin: 0 auto;
+    max-width: 700px; margin: 0 auto;
   }
 
   .track {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--card);
-    padding: 16px 18px;
-    border-radius: 12px;
-    margin-bottom: 14px;
-    border: 1px solid rgba(255,255,255,0.04);
-    transition: 0.25s;
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--card); padding:16px 18px; border-radius:12px; margin-bottom:14px;
+    border:1px solid rgba(255,255,255,0.04); transition:0.25s;
   }
 
-  .track.active {
-    border: 1px solid var(--accent);
-    box-shadow: 0 0 14px rgba(0,194,255,0.4);
-  }
-
-  .track span {
-    font-size: 15px;
-    font-weight: 500;
-  }
+  .track.active { border:1px solid var(--accent); box-shadow:0 0 14px rgba(0,194,255,0.4); }
 
   button {
-    background: var(--accent);
-    border: none;
-    border-radius: 8px;
-    padding: 8px 18px;
-    color: #06202b;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
+    background:var(--accent); border:none; border-radius:8px; padding:8px 18px;
+    color:#06202b; font-weight:600; cursor:pointer; transition:0.2s;
   }
+  button:hover { filter:brightness(1.15); }
 
-  button:hover {
-    filter: brightness(1.15);
-  }
+  audio { width:100%; max-width:700px; display:block; margin:35px auto 0; }
 
-  audio {
-    width: 100%;
-    max-width: 700px;
-    display: block;
-    margin: 35px auto 0;
+  /* PayPal Section */
+  .pay-section {
+    max-width:700px; margin:50px auto; padding:22px;
+    background:var(--card); border-radius:14px; border:1px solid rgba(255,255,255,0.04);
+    text-align:center;
   }
+  .price { font-size:20px; margin-bottom:10px; font-weight:600; }
+  .desc { color:var(--muted); font-size:14px; margin-bottom:20px; }
 </style>
 </head>
 <body>
@@ -81,8 +57,15 @@
 <h1>Music Player</h1>
 
 <div class="track-list" id="trackList"></div>
-
 <audio id="player" controls></audio>
+
+<div class="pay-section">
+  <div class="price">$4.99</div>
+  <div class="desc">Unlock full-quality downloads + commercial license.</div>
+
+  <!-- PayPal button will appear here -->
+  <div id="paypal-button-container"></div>
+</div>
 
 <script>
 const tracks = [
@@ -101,9 +84,8 @@ tracks.forEach(filename => {
 
   const div = document.createElement("div");
   div.className = "track";
-
   const name = document.createElement("span");
-  name.textContent = filename.replace(".mp3", "");
+  name.textContent = filename.replace(".mp3","");
 
   const btn = document.createElement("button");
   btn.textContent = "Play";
@@ -116,13 +98,10 @@ tracks.forEach(filename => {
     } else {
       player.src = encoded;
       player.play();
-
       if (currentBtn) currentBtn.textContent = "Play";
       if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-
       btn.textContent = "Pause";
       div.classList.add("active");
-
       currentBtn = btn;
       currentTrackDiv = div;
     }
@@ -133,11 +112,32 @@ tracks.forEach(filename => {
   trackListDiv.appendChild(div);
 });
 
-// Reset UI when track ends
 player.onended = () => {
   if (currentBtn) currentBtn.textContent = "Play";
   if (currentTrackDiv) currentTrackDiv.classList.remove("active");
 };
+</script>
+
+<!-- PayPal SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
+
+<script>
+// PayPal Buttons
+paypal.Buttons({
+  createOrder: function(data, actions) {
+    return actions.order.create({
+      purchase_units: [{
+        amount: { value: '4.99' }
+      }]
+    });
+  },
+  onApprove: function(data, actions) {
+    return actions.order.capture().then(function(details) {
+      alert('Payment completed by ' + details.payer.name.given_name + '!');
+      // 여기에 결제 후 처리 로직 (예: 다운로드 링크 표시)
+    });
+  }
+}).render('#paypal-button-container');
 </script>
 
 </body>
