@@ -1,87 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>MP3 Player</title>
+<meta charset="UTF-8" />
+<title>Music Player</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 40px;
-        background: #f4f4f4;
-    }
-    h2 { margin-bottom: 20px; }
-    .track {
-        background: white;
-        padding: 14px;
-        border-radius: 6px;
-        margin-bottom: 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    button {
-        padding: 6px 14px;
-        font-size: 14px;
-        cursor: pointer;
-    }
-    audio {
-        width: 100%;
-        margin-top: 25px;
-    }
+  :root{
+    --bg:#0f1724;
+    --card:#0b1220;
+    --accent:#00c2ff;
+    --text:#e6eef8;
+    --muted:#95a3b6;
+  }
+
+  body {
+    margin: 0;
+    padding: 40px;
+    font-family: Inter, Segoe UI, Arial, sans-serif;
+    background: linear-gradient(180deg, #071029 0%, #071726 60%);
+    color: var(--text);
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-weight: 600;
+  }
+
+  .track-list {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .track {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card);
+    padding: 16px 18px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(255,255,255,0.04);
+    transition: 0.25s;
+  }
+
+  .track.active {
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 14px rgba(0,194,255,0.4);
+  }
+
+  .track span {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  button {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    color: #06202b;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  button:hover {
+    filter: brightness(1.15);
+  }
+
+  audio {
+    width: 100%;
+    max-width: 700px;
+    display: block;
+    margin: 35px auto 0;
+  }
 </style>
 </head>
 <body>
 
-<h2>MP3 Playlist</h2>
+<h1>Music Player</h1>
 
-<div id="trackList"></div>
+<div class="track-list" id="trackList"></div>
 
 <audio id="player" controls></audio>
 
 <script>
 const tracks = [
-    "Echoes of You.mp3",
-    "Memory Loops.mp3",
-    "Us, Finally.mp3"
+  "Echoes of You.mp3",
+  "Memory Loops.mp3",
+  "Us, Finally.mp3"
 ];
 
 const trackListDiv = document.getElementById("trackList");
 const player = document.getElementById("player");
-let currentPlayingButton = null;
+let currentBtn = null;
+let currentTrackDiv = null;
 
 tracks.forEach(filename => {
-    const encoded = encodeURIComponent(filename);
+  const encoded = encodeURIComponent(filename);
 
-    const div = document.createElement("div");
-    div.className = "track";
+  const div = document.createElement("div");
+  div.className = "track";
 
-    const name = document.createElement("span");
-    name.textContent = filename;
+  const name = document.createElement("span");
+  name.textContent = filename.replace(".mp3", "");
 
-    const btn = document.createElement("button");
-    btn.textContent = "Play";
+  const btn = document.createElement("button");
+  btn.textContent = "Play";
 
-    btn.onclick = () => {
-        if (player.src.includes(encoded) && !player.paused) {
-            player.pause();
-            btn.textContent = "Play";
-        } else {
-            player.src = encoded;
-            player.play();
-            if (currentPlayingButton) currentPlayingButton.textContent = "Play";
-            btn.textContent = "Pause";
-            currentPlayingButton = btn;
-        }
-    };
+  btn.onclick = () => {
+    if (player.src.includes(encoded) && !player.paused) {
+      player.pause();
+      btn.textContent = "Play";
+      div.classList.remove("active");
+    } else {
+      player.src = encoded;
+      player.play();
 
-    div.appendChild(name);
-    div.appendChild(btn);
-    trackListDiv.appendChild(div);
+      if (currentBtn) currentBtn.textContent = "Play";
+      if (currentTrackDiv) currentTrackDiv.classList.remove("active");
+
+      btn.textContent = "Pause";
+      div.classList.add("active");
+
+      currentBtn = btn;
+      currentTrackDiv = div;
+    }
+  };
+
+  div.appendChild(name);
+  div.appendChild(btn);
+  trackListDiv.appendChild(div);
 });
 
+// Reset UI when track ends
 player.onended = () => {
-    if (currentPlayingButton) currentPlayingButton.textContent = "Play";
+  if (currentBtn) currentBtn.textContent = "Play";
+  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
 };
 </script>
 
