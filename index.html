@@ -1,236 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Music Player + Equalizer + PayPal</title>
 <style>
   :root{
-    --bg:#0f1724;
-    --card:#0b1220;
-    --accent:#00c2ff;
-    --text:#e6eef8;
-    --muted:#95a3b6;
+    --bg:#0f1724; --card:#0b1220; --accent:#00c2ff;
+    --text:#e6eef8; --muted:#95a3b6;
   }
 
   body {
-    margin: 0;
-    padding: 40px;
-    font-family: Inter, Segoe UI, Arial, sans-serif;
-    background: linear-gradient(180deg, #071029 0%, #071726 60%);
-    color: var(--text);
+    margin:0; padding:40px;
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    background:linear-gradient(180deg,#071029 0%,#071726 60%);
+    color:var(--text);
   }
 
-  h1 { text-align:center; margin-bottom:30px; font-weight:600; }
+  h1{text-align:center;margin-bottom:30px;font-weight:600;}
 
-  .track-list {
-    max-width: 700px; margin: 0 auto;
-  }
+  .track-list{max-width:700px;margin:0 auto;}
 
-  .track {
+  .track{
     display:flex; justify-content:space-between; align-items:center;
-    background:var(--card); padding:16px 18px; border-radius:12px; margin-bottom:14px;
-    border:1px solid rgba(255,255,255,0.04); transition:0.25s;
+    background:var(--card); padding:16px 18px; border-radius:12px;
+    margin-bottom:14px; border:1px solid rgba(255,255,255,0.04);
+    transition:0.25s;
   }
 
-  .track.active { border:1px solid var(--accent); box-shadow:0 0 14px rgba(0,194,255,0.4); }
+  .track.active{border:1px solid var(--accent); box-shadow:0 0 14px rgba(0,194,255,0.4);}
 
-  .track-controls {
-    display:flex; align-items:center; gap:12px;
+  .track-name{
+    max-width:200px; text-align:left; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
   }
 
-  button {
-    background:var(--accent); border:none; border-radius:8px; padding:8px 18px;
-    color:#06202b; font-weight:600; cursor:pointer; transition:0.2s;
-  }
-  button:hover { filter:brightness(1.15); }
-
-  audio { width:100%; max-width:700px; display:block; margin:35px auto 0; }
-
-  .eq {
-    width:60px;
-    height:30px;
-    background:#09121f;
-    border-radius:6px;
+  .track-controls{
+    display:flex; align-items:center; gap:10px;
   }
 
-  /* PayPal Section */
-  .pay-section {
+  button{
+    background:var(--accent); border:none; border-radius:8px;
+    padding:8px 16px; color:#06202b; font-weight:600; cursor:pointer;
+    transition:.2s;
+  }
+  button:hover{filter:brightness(1.15);}
+
+  canvas.eqCanvas{
+    width:80px; height:30px; border-radius:6px; background:#09121f;
+  }
+
+  audio{display:none;}
+
+  .pay-section{
     max-width:700px; margin:50px auto; padding:22px;
     background:var(--card); border-radius:14px; border:1px solid rgba(255,255,255,0.04);
     text-align:center;
   }
-  .price { font-size:20px; margin-bottom:10px; font-weight:600; }
-  .desc { color:var(--muted); font-size:14px; margin-bottom:20px; }
+
+  .price{font-size:20px;margin-bottom:10px;font-weight:600;}
+  .desc{color:var(--muted);font-size:14px;margin-bottom:20px;}
 </style>
 </head>
 <body>
 
 <h1>Music Player</h1>
-
 <div class="track-list" id="trackList"></div>
-
 <audio id="player" controls></audio>
 
 <div class="pay-section">
   <div class="price">$4.99</div>
   <div class="desc">Unlock full-quality downloads + commercial license.</div>
-
   <div id="paypal-button-container"></div>
 </div>
 
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
 <script>
-/* -----------------------------
-   Track List
------------------------------- */
-const tracks = [
-  "Echoes of You.mp3",
-  "Memory Loops.mp3",
-  "Us, Finally.mp3"
-];
-
-const trackListDiv = document.getElementById("trackList");
+const tracks = ["Echoes of You.mp3","Memory Loops.mp3","Us, Finally.mp3"];
+const list = document.getElementById("trackList");
 const player = document.getElementById("player");
 
-let currentBtn = null;
-let currentTrackDiv = null;
-let currentEQ = null;
+let audioCtx=null, analyser=null, srcNode=null;
+let curBtn=null, curDiv=null, curEQ=null;
+let eqAnimationId=null;
 
-/* -----------------------------
-   AudioContext (only once!)
------------------------------- */
-const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContextClass();
-
-const analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
-const bufferLength = analyser.frequencyBinCount;
-const dataArray = new Uint8Array(bufferLength);
-
-// Media source created ONCE
-const sourceNode = audioCtx.createMediaElementSource(player);
-sourceNode.connect(analyser);
-analyser.connect(audioCtx.destination);
-
-/* -----------------------------
-   Draw EQ
------------------------------- */
-function drawEQ(canvas) {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-
-  function draw() {
-    requestAnimationFrame(draw);
-
-    if (canvas !== currentEQ) {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      return;
-    }
-
-    analyser.getByteFrequencyData(dataArray);
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const barWidth = canvas.width / bufferLength;
-
-    for (let i=0; i<bufferLength; i++) {
-      const v = dataArray[i] / 255;
-      const h = v * canvas.height;
-      ctx.fillStyle = "#00c2ff";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth -1, h);
-    }
+function initAudio() {
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize=64;
+    srcNode = audioCtx.createMediaElementSource(player);
+    srcNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
   }
-
-  draw();
 }
 
-/* -----------------------------
-   Create Track UI
------------------------------- */
-tracks.forEach(filename => {
-  const encoded = encodeURIComponent(filename);
+function drawEQ(canvas){
+  const ctx = canvas.getContext('2d');
+  const data = new Uint8Array(analyser.frequencyBinCount);
 
+  if(eqAnimationId) cancelAnimationFrame(eqAnimationId);
+
+  function loop(){
+    eqAnimationId = requestAnimationFrame(loop);
+    if(canvas!==curEQ){ctx.clearRect(0,0,canvas.width,canvas.height); return;}
+
+    analyser.getByteFrequencyData(data);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const barW = canvas.width/data.length;
+    let x=0;
+    for(let i=0;i<data.length;i++){
+      const h=data[i]*0.5;
+      ctx.fillStyle=`rgb(${h+40},150,255)`;
+      ctx.fillRect(x,canvas.height-h,barW-1,h);
+      x+=barW;
+    }
+  }
+  loop();
+}
+
+tracks.forEach(f=>{
+  const encoded = encodeURIComponent(f);
   const div = document.createElement("div");
-  div.className = "track";
+  div.className="track";
 
-  const name = document.createElement("span");
-  name.textContent = filename.replace(".mp3","");
+  const nameSpan = document.createElement("span");
+  nameSpan.className="track-name";
+  nameSpan.textContent = f.replace(".mp3","");
+  div.appendChild(nameSpan);
 
   const controls = document.createElement("div");
-  controls.className = "track-controls";
+  controls.className="track-controls";
 
   const btn = document.createElement("button");
-  btn.textContent = "Play";
+  btn.textContent="Play";
 
   const eqCanvas = document.createElement("canvas");
-  eqCanvas.className = "eq";
-  eqCanvas.width = 60;
-  eqCanvas.height = 30;
+  eqCanvas.className="eqCanvas"; eqCanvas.width=80; eqCanvas.height=30;
 
-  btn.onclick = async () => {
-    if (audioCtx.state === "suspended") {
-      await audioCtx.resume();
+  btn.onclick = async ()=>{
+    if(audioCtx && audioCtx.state==="suspended") await audioCtx.resume();
+    initAudio();
+
+    if(player.src.includes(encoded) && !player.paused){
+      player.pause(); btn.textContent="Play"; div.classList.remove("active"); curEQ=null; return;
     }
 
-    // If same track playing → pause
-    if (player.src.includes(encoded) && !player.paused) {
-      player.pause();
-      btn.textContent = "Play";
-      div.classList.remove("active");
-      currentEQ = null;
-      return;
-    }
-
-    // Switch track
-    player.src = "music/" + encoded;
+    player.src="music/"+encoded;
     player.play();
 
-    if (currentBtn) currentBtn.textContent = "Play";
-    if (currentTrackDiv) currentTrackDiv.classList.remove("active");
+    if(curBtn) curBtn.textContent="Play";
+    if(curDiv) curDiv.classList.remove("active");
 
-    btn.textContent = "Pause";
+    btn.textContent="Pause";
     div.classList.add("active");
-    currentBtn = btn;
-    currentTrackDiv = div;
-
-    currentEQ = eqCanvas;  // activate this EQ
+    curBtn=btn; curDiv=div;
+    curEQ=eqCanvas;
     drawEQ(eqCanvas);
   };
 
   controls.appendChild(btn);
   controls.appendChild(eqCanvas);
-
-  div.appendChild(name);
   div.appendChild(controls);
-  trackListDiv.appendChild(div);
+  list.appendChild(div);
 });
 
-/* -----------------------------
-   On track end
------------------------------- */
-player.onended = () => {
-  if (currentBtn) currentBtn.textContent = "Play";
-  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-  currentEQ = null;
+player.onended=()=>{
+  if(curBtn) curBtn.textContent="Play";
+  if(curDiv) curDiv.classList.remove("active");
+  curEQ=null;
 };
-</script>
 
-<!-- PayPal SDK -->
-<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
-
-<script>
 // PayPal
 paypal.Buttons({
-  createOrder: function(data, actions) {
-    return actions.order.create({
-      purchase_units: [{ amount: { value: '4.99' }}]
-    });
-  },
-  onApprove: function(data, actions) {
-    return actions.order.capture().then(function(details) {
-      alert("Payment completed by " + details.payer.name.given_name);
-    });
-  }
+  createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{value:'4.99'}}]}),
+  onApprove:(d,a)=>a.order.capture().then(()=>alert('Payment completed!'))
 }).render('#paypal-button-container');
 </script>
-
 </body>
 </html>
