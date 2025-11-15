@@ -1,39 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Music Player + PayPal + Equalizer</title>
+<meta charset="UTF-8">
+<title>Music Player + Equalizer + PayPal</title>
 <style>
   :root{
-    --bg:#0f1724;
-    --card:#0b1220;
-    --accent:#00c2ff;
-    --text:#e6eef8;
-    --muted:#95a3b6;
+    --bg:#0f1724; --card:#0b1220; --accent:#00c2ff;
+    --text:#e6eef8; --muted:#95a3b6;
   }
   body { margin:0; padding:40px; font-family:Inter,Segoe UI,Arial,sans-serif;
-    background:linear-gradient(180deg,#071029 0%,#071726 60%); color:var(--text); }
+    background:linear-gradient(180deg,#071029 0%,#071726 60%); color:var(--text);}
   h1{text-align:center;margin-bottom:30px;font-weight:600;}
-
   .track-list{max-width:700px;margin:0 auto;}
-  .track{display:flex;align-items:center;justify-content:flex-start;
-    background:var(--card);padding:16px 18px;border-radius:12px;margin-bottom:14px;
-    border:1px solid rgba(255,255,255,0.04);transition:0.25s;gap:10px;}
-  .track.active{border:1px solid var(--accent);box-shadow:0 0 14px rgba(0,194,255,0.4);}
-
-  .track-name {
-    max-width: 150px;
-    text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .track{
+    display:flex; align-items:center; justify-content:flex-start;
+    background:var(--card); padding:16px 18px; border-radius:12px; margin-bottom:14px;
+    border:1px solid rgba(255,255,255,0.04); transition:0.25s; gap:10px;
   }
-
-  button{background:var(--accent);border:none;border-radius:8px;padding:8px 18px;color:#06202b;font-weight:600;cursor:pointer;transition:.2s;}
-  button:hover{filter:brightness(1.15);}  
-
-  canvas.eqCanvas { width: 150px; height: 50px; border-radius:6px; background:#000; }
-
+  .track.active{border:1px solid var(--accent); box-shadow:0 0 14px rgba(0,194,255,0.4);}
+  .track-name {
+    max-width:150px; text-align:left; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  button{background:var(--accent); border:none; border-radius:8px;
+    padding:8px 18px; color:#06202b; font-weight:600; cursor:pointer; transition:.2s;}
+  button:hover{filter:brightness(1.15);}
+  canvas.eqCanvas{width:150px; height:50px; border-radius:6px; background:#000;}
+  audio{display:none;}
   .pay-section{max-width:700px;margin:50px auto;padding:22px;background:var(--card);
     border-radius:14px;border:1px solid rgba(255,255,255,0.04);text-align:center;}
   .price{font-size:20px;margin-bottom:10px;font-weight:600;}
@@ -41,6 +34,7 @@
 </style>
 </head>
 <body>
+
 <h1>Music Player</h1>
 <div class="track-list" id="trackList"></div>
 <audio id="player" controls></audio>
@@ -51,41 +45,44 @@
   <div id="paypal-button-container"></div>
 </div>
 
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
 <script>
 const tracks = ["Echoes of You.mp3","Memory Loops.mp3","Us, Finally.mp3"];
 const list = document.getElementById("trackList");
 const player = document.getElementById("player");
-let audioCtx, analyser, srcNode;
-let curBtn=null, curDiv=null;
 
-function initEQ(canvas){
+let audioCtx = null, analyser = null, srcNode = null;
+let curBtn=null, curDiv=null;
+const canvases = [];
+
+function initAudio() {
   if(!audioCtx){
     audioCtx = new (window.AudioContext||window.webkitAudioContext)();
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 64;
+    srcNode = audioCtx.createMediaElementSource(player);
+    srcNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
   }
-  if(srcNode) srcNode.disconnect();
-  srcNode = audioCtx.createMediaElementSource(player);
-  srcNode.connect(analyser);
-  analyser.connect(audioCtx.destination);
-  drawEQ(canvas);
 }
 
-function drawEQ(canvas){
-  const ctx = canvas.getContext("2d");
+function drawEQ(){
   const data = new Uint8Array(analyser.frequencyBinCount);
   function loop(){
     requestAnimationFrame(loop);
     analyser.getByteFrequencyData(data);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const barW = (canvas.width/data.length)-2;
-    let x=0;
-    for(let i=0;i<data.length;i++){
-      const h = data[i]*0.5;
-      ctx.fillStyle = `rgb(${h+40},150,255)`;
-      ctx.fillRect(x,canvas.height-h,barW,h);
-      x+=barW+2;
-    }
+    canvases.forEach(canvas=>{
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const barW = canvas.width/data.length-2;
+      let x=0;
+      for(let i=0;i<data.length;i++){
+        const h = data[i]*0.5;
+        ctx.fillStyle = `rgb(${h+40},150,255)`;
+        ctx.fillRect(x,canvas.height-h,barW,h);
+        x+=barW+2;
+      }
+    });
   }
   loop();
 }
@@ -97,7 +94,7 @@ tracks.forEach(f=>{
 
   const nameSpan = document.createElement("span");
   nameSpan.className="track-name";
-  nameSpan.textContent = f.replace(".mp3",""),
+  nameSpan.textContent = f.replace(".mp3","");
   div.appendChild(nameSpan);
 
   const btn = document.createElement("button");
@@ -105,38 +102,35 @@ tracks.forEach(f=>{
   div.appendChild(btn);
 
   const canvas = document.createElement("canvas");
-  canvas.className="eqCanvas";
-  canvas.width=150; canvas.height=50;
+  canvas.className="eqCanvas"; canvas.width=150; canvas.height=50;
   div.appendChild(canvas);
+  canvases.push(canvas);
 
-  btn.onclick = async()=>{
+  btn.onclick = async ()=>{
     if(player.src.includes(encoded) && !player.paused){
-      player.pause(); btn.textContent="Play";
-      div.classList.remove("active"); return;
+      player.pause(); btn.textContent="Play"; div.classList.remove("active"); return;
     }
     player.src = encoded;
     if(audioCtx && audioCtx.state==="suspended") await audioCtx.resume();
     player.play().then(()=>{
-      initEQ(canvas);
+      initAudio();
       if(curBtn) curBtn.textContent="Play";
       if(curDiv) curDiv.classList.remove("active");
       btn.textContent="Pause";
       div.classList.add("active");
       curBtn=btn; curDiv=div;
+      drawEQ();
     });
   };
-
   list.appendChild(div);
 });
 
 player.onended=()=>{if(curBtn) curBtn.textContent="Play"; if(curDiv) curDiv.classList.remove("active");}
-</script>
 
-<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
-<script>
+// PayPal Buttons
 paypal.Buttons({
   createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{value:'4.99'}}]}),
-  onApprove:(d,a)=>a.order.capture().then(n=>alert('Payment completed!'))
+  onApprove:(d,a)=>a.order.capture().then(()=>alert('Payment completed!'))
 }).render('#paypal-button-container');
 </script>
 </body>
