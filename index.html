@@ -77,24 +77,31 @@
   <div id="paypal-button-container"></div>
 </div>
 
+<!-- jsmediatags -->
+<script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.5/dist/jsmediatags.min.js"></script>
+<!-- PayPal SDK -->
 <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
+
 <script>
 /* -----------------------------
-   Track Data with Artist
+   Track List
 ------------------------------ */
 const tracks = [
-  {file:"Echoes of You.mp3", title:"Echoes of You", artist:"Artist A"},
-  {file:"Memory Loops.mp3", title:"Memory Loops", artist:"Artist B"},
-  {file:"Us, Finally.mp3", title:"Us, Finally", artist:"Artist C"}
+  "Echoes of You.mp3",
+  "Memory Loops.mp3",
+  "Us, Finally.mp3"
 ];
 
-const list = document.getElementById("trackList");
+const trackListDiv = document.getElementById("trackList");
 const player = document.getElementById("player");
 
 let audioCtx=null, analyser=null, srcNode=null;
-let curBtn=null, curDiv=null, curEQ=null;
+let currentBtn=null, currentTrackDiv=null, currentEQ=null;
 let eqAnimationId=null;
 
+/* -----------------------------
+   Initialize AudioContext
+------------------------------ */
 function initAudio() {
   if(!audioCtx){
     audioCtx = new (window.AudioContext||window.webkitAudioContext)();
@@ -106,21 +113,25 @@ function initAudio() {
   }
 }
 
+/* -----------------------------
+   Draw Equalizer
+------------------------------ */
 function drawEQ(canvas){
+  if(!canvas) return;
   const ctx = canvas.getContext('2d');
   const data = new Uint8Array(analyser.frequencyBinCount);
   if(eqAnimationId) cancelAnimationFrame(eqAnimationId);
 
   function loop(){
     eqAnimationId = requestAnimationFrame(loop);
-    if(canvas!==curEQ){ctx.clearRect(0,0,canvas.width,canvas.height); return;}
+    if(canvas!==currentEQ){ctx.clearRect(0,0,canvas.width,canvas.height); return;}
     analyser.getByteFrequencyData(data);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     const barW = canvas.width/data.length;
     let x=0;
     for(let i=0;i<data.length;i++){
-      const h=data[i]*0.5;
-      ctx.fillStyle=`rgb(${h+40},150,255)`;
+      const h = data[i]*0.5;
+      ctx.fillStyle = `rgb(${h+40},150,255)`;
       ctx.fillRect(x,canvas.height-h,barW-1,h);
       x+=barW;
     }
@@ -128,22 +139,41 @@ function drawEQ(canvas){
   loop();
 }
 
-tracks.forEach(t=>{
-  const encoded = encodeURIComponent(t.file);
+/* -----------------------------
+   Render Track UI with metadata
+------------------------------ */
+tracks.forEach(fileName=>{
+  const encoded = encodeURIComponent(fileName);
   const div = document.createElement("div");
   div.className="track";
 
-  const info = document.createElement("div");
-  info.className="track-info";
+  const infoDiv = document.createElement("div");
+  infoDiv.className="track-info";
+
   const nameSpan = document.createElement("span");
-  nameSpan.textContent = t.title;
+  nameSpan.textContent = fileName.replace(".mp3","");
+
   const artistSpan = document.createElement("div");
   artistSpan.className="track-artist";
-  artistSpan.textContent = t.artist;
-  info.appendChild(nameSpan);
-  info.appendChild(artistSpan);
-  div.appendChild(info);
+  artistSpan.textContent = "Loading...";
 
+  infoDiv.appendChild(nameSpan);
+  infoDiv.appendChild(artistSpan);
+  div.appendChild(infoDiv);
+
+  // Read metadata
+  jsmediatags.read("music/"+fileName,{
+    onSuccess: function(tag){
+      artistSpan.textContent = tag.tags.artist || "Unknown Artist";
+      nameSpan.textContent = tag.tags.title || fileName.replace(".mp3","");
+    },
+    onError: function(err){
+      console.warn("Failed to read metadata:",err);
+      artistSpan.textContent = "Unknown Artist";
+    }
+  });
+
+  // Controls
   const controls = document.createElement("div");
   controls.className="track-controls";
 
@@ -154,42 +184,48 @@ tracks.forEach(t=>{
   eqCanvas.className="eqCanvas"; eqCanvas.width=80; eqCanvas.height=30;
 
   btn.onclick = async ()=>{
-    if(audioCtx && audioCtx.state==="suspended") await audioCtx.resume();
     initAudio();
+    if(audioCtx.state==="suspended") await audioCtx.resume();
 
     if(player.src.includes(encoded) && !player.paused){
-      player.pause(); btn.textContent="Play"; div.classList.remove("active"); curEQ=null; return;
+      player.pause(); btn.textContent="Play"; div.classList.remove("active"); currentEQ=null; return;
     }
 
     player.src="music/"+encoded;
     player.play();
 
-    if(curBtn) curBtn.textContent="Play";
-    if(curDiv) curDiv.classList.remove("active");
+    if(currentBtn) currentBtn.textContent="Play";
+    if(currentTrackDiv) currentTrackDiv.classList.remove("active");
 
     btn.textContent="Pause";
     div.classList.add("active");
-    curBtn=btn; curDiv=div;
-    curEQ=eqCanvas;
+    currentBtn=btn; currentTrackDiv=div;
+    currentEQ=eqCanvas;
     drawEQ(eqCanvas);
   };
 
   controls.appendChild(btn);
   controls.appendChild(eqCanvas);
   div.appendChild(controls);
-  list.appendChild(div);
+
+  trackListDiv.appendChild(div);
 });
 
-player.onended=()=>{
-  if(curBtn) curBtn.textContent="Play";
-  if(curDiv) curDiv.classList.remove("active");
-  curEQ=null;
+/* -----------------------------
+   On track end
+------------------------------ */
+player.onended = ()=>{
+  if(currentBtn) currentBtn.textContent="Play";
+  if(currentTrackDiv) currentTrackDiv.classList.remove("active");
+  currentEQ=null;
 };
 
-// PayPal
+/* -----------------------------
+   PayPal Button
+------------------------------ */
 paypal.Buttons({
-  createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{value:'4.99'}}]}),
-  onApprove:(d,a)=>a.order.capture().then(()=>alert('Payment completed!'))
+  createOrder:(data,actions)=>actions.order.create({purchase_units:[{amount:{value:'4.99'}}]}),
+  onApprove:(data,actions)=>actions.order.capture().then(()=>alert('Payment completed!'))
 }).render('#paypal-button-container');
 </script>
 </body>
