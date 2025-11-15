@@ -53,7 +53,6 @@
     border-radius:6px;
   }
 
-  /* PayPal Section */
   .pay-section {
     max-width:700px; margin:50px auto; padding:22px;
     background:var(--card); border-radius:14px; border:1px solid rgba(255,255,255,0.04);
@@ -79,14 +78,13 @@
 </div>
 
 <script>
-/* -----------------------------
-   Track List
------------------------------- */
 const tracks = [
   "Echoes of You.mp3",
   "Memory Loops.mp3",
   "Us, Finally.mp3"
 ];
+
+const GCS_BASE = "https://storage.googleapis.com/kiwi_251115/";
 
 const trackListDiv = document.getElementById("trackList");
 const player = document.getElementById("player");
@@ -95,9 +93,6 @@ let currentBtn = null;
 let currentTrackDiv = null;
 let currentEQ = null;
 
-/* -----------------------------
-   AudioContext (only once!)
------------------------------- */
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContextClass();
 
@@ -106,14 +101,10 @@ analyser.fftSize = 64;
 const bufferLength = analyser.frequencyBinCount;
 const dataArray = new Uint8Array(bufferLength);
 
-// Media source created ONCE
 const sourceNode = audioCtx.createMediaElementSource(player);
 sourceNode.connect(analyser);
 analyser.connect(audioCtx.destination);
 
-/* -----------------------------
-   Draw EQ
------------------------------- */
 function drawEQ(canvas) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -127,24 +118,20 @@ function drawEQ(canvas) {
     }
 
     analyser.getByteFrequencyData(dataArray);
-
     ctx.clearRect(0,0,canvas.width,canvas.height);
     const barWidth = canvas.width / bufferLength;
 
-    for (let i=0; i<bufferLength; i++) {
+    for (let i = 0; i < bufferLength; i++) {
       const v = dataArray[i] / 255;
       const h = v * canvas.height;
       ctx.fillStyle = "#00c2ff";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth -1, h);
+      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
     }
   }
 
   draw();
 }
 
-/* -----------------------------
-   Create Track UI
------------------------------- */
 tracks.forEach(filename => {
   const encoded = encodeURIComponent(filename);
 
@@ -152,7 +139,7 @@ tracks.forEach(filename => {
   div.className = "track";
 
   const name = document.createElement("span");
-  name.textContent = filename.replace(".mp3","");
+  name.textContent = filename.replace(".mp3", "");
 
   const controls = document.createElement("div");
   controls.className = "track-controls";
@@ -166,11 +153,8 @@ tracks.forEach(filename => {
   eqCanvas.height = 30;
 
   btn.onclick = async () => {
-    if (audioCtx.state === "suspended") {
-      await audioCtx.resume();
-    }
+    if (audioCtx.state === "suspended") await audioCtx.resume();
 
-    // If same track playing → pause
     if (player.src.includes(encoded) && !player.paused) {
       player.pause();
       btn.textContent = "Play";
@@ -179,8 +163,7 @@ tracks.forEach(filename => {
       return;
     }
 
-    // Switch track
-    player.src = "music/" + encoded;
+    player.src = GCS_BASE + encoded;
     player.play();
 
     if (currentBtn) currentBtn.textContent = "Play";
@@ -191,7 +174,7 @@ tracks.forEach(filename => {
     currentBtn = btn;
     currentTrackDiv = div;
 
-    currentEQ = eqCanvas;  // activate this EQ
+    currentEQ = eqCanvas;
     drawEQ(eqCanvas);
   };
 
@@ -203,9 +186,6 @@ tracks.forEach(filename => {
   trackListDiv.appendChild(div);
 });
 
-/* -----------------------------
-   On track end
------------------------------- */
 player.onended = () => {
   if (currentBtn) currentBtn.textContent = "Play";
   if (currentTrackDiv) currentTrackDiv.classList.remove("active");
@@ -213,16 +193,12 @@ player.onended = () => {
 };
 </script>
 
-<!-- PayPal SDK -->
 <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
 
 <script>
-// PayPal
 paypal.Buttons({
   createOrder: function(data, actions) {
-    return actions.order.create({
-      purchase_units: [{ amount: { value: '4.99' }}]
-    });
+    return actions.order.create({ purchase_units: [{ amount: { value: '4.99' }}] });
   },
   onApprove: function(data, actions) {
     return actions.order.capture().then(function(details) {
