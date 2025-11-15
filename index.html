@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Music Player + Equalizer + PayPal</title>
+<title>Music Player + Artist + Equalizer + PayPal</title>
 <style>
   :root{
     --bg:#0f1724; --card:#0b1220; --accent:#00c2ff;
@@ -29,9 +29,13 @@
 
   .track.active{border:1px solid var(--accent); box-shadow:0 0 14px rgba(0,194,255,0.4);}
 
-  .track-name{
+  .track-info{
     max-width:200px; text-align:left; white-space:nowrap;
     overflow:hidden; text-overflow:ellipsis;
+  }
+
+  .track-artist{
+    font-size:0.85em; color:var(--muted);
   }
 
   .track-controls{
@@ -75,7 +79,15 @@
 
 <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
 <script>
-const tracks = ["Echoes of You.mp3","Memory Loops.mp3","Us, Finally.mp3"];
+/* -----------------------------
+   Track Data with Artist
+------------------------------ */
+const tracks = [
+  {file:"Echoes of You.mp3", title:"Echoes of You", artist:"Artist A"},
+  {file:"Memory Loops.mp3", title:"Memory Loops", artist:"Artist B"},
+  {file:"Us, Finally.mp3", title:"Us, Finally", artist:"Artist C"}
+];
+
 const list = document.getElementById("trackList");
 const player = document.getElementById("player");
 
@@ -97,13 +109,11 @@ function initAudio() {
 function drawEQ(canvas){
   const ctx = canvas.getContext('2d');
   const data = new Uint8Array(analyser.frequencyBinCount);
-
   if(eqAnimationId) cancelAnimationFrame(eqAnimationId);
 
   function loop(){
     eqAnimationId = requestAnimationFrame(loop);
     if(canvas!==curEQ){ctx.clearRect(0,0,canvas.width,canvas.height); return;}
-
     analyser.getByteFrequencyData(data);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     const barW = canvas.width/data.length;
@@ -118,15 +128,21 @@ function drawEQ(canvas){
   loop();
 }
 
-tracks.forEach(f=>{
-  const encoded = encodeURIComponent(f);
+tracks.forEach(t=>{
+  const encoded = encodeURIComponent(t.file);
   const div = document.createElement("div");
   div.className="track";
 
+  const info = document.createElement("div");
+  info.className="track-info";
   const nameSpan = document.createElement("span");
-  nameSpan.className="track-name";
-  nameSpan.textContent = f.replace(".mp3","");
-  div.appendChild(nameSpan);
+  nameSpan.textContent = t.title;
+  const artistSpan = document.createElement("div");
+  artistSpan.className="track-artist";
+  artistSpan.textContent = t.artist;
+  info.appendChild(nameSpan);
+  info.appendChild(artistSpan);
+  div.appendChild(info);
 
   const controls = document.createElement("div");
   controls.className="track-controls";
