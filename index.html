@@ -79,7 +79,7 @@
 
 <script>
 /* -----------------------------
-   Track List
+   Tracks
 ------------------------------ */
 const tracks = [
   "Echoes of You.mp3",
@@ -87,10 +87,9 @@ const tracks = [
   "Us, Finally.mp3"
 ];
 
-/* Cloud Run 프록시 URL */
-const CLOUD_RUN_BASE = "https://candle-1010-777936161804.europe-west1.run.app/music/";
+/* Cloud Run 기반 MP3 URL */
+const CloudRunBase = "https://candle-1010-777936161804.europe-west1.run.app/music/";
 
-/* HTML 요소 */
 const trackListDiv = document.getElementById("trackList");
 const player = document.getElementById("player");
 
@@ -99,7 +98,7 @@ let currentTrackDiv = null;
 let currentEQ = null;
 
 /* -----------------------------
-   AudioContext 설정
+   Audio Context + EQ
 ------------------------------ */
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContextClass();
@@ -113,38 +112,30 @@ const sourceNode = audioCtx.createMediaElementSource(player);
 sourceNode.connect(analyser);
 analyser.connect(audioCtx.destination);
 
-/* -----------------------------
-   EQ 애니메이션
------------------------------- */
 function drawEQ(canvas) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
 
   function draw() {
     requestAnimationFrame(draw);
-
-    if (canvas !== currentEQ) {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      return;
-    }
+    if (canvas !== currentEQ) return ctx.clearRect(0,0,canvas.width,canvas.height);
 
     analyser.getByteFrequencyData(dataArray);
     ctx.clearRect(0,0,canvas.width,canvas.height);
-
     const barWidth = canvas.width / bufferLength;
-    for (let i=0; i<bufferLength; i++) {
+
+    for (let i = 0; i < bufferLength; i++) {
       const v = dataArray[i] / 255;
       const h = v * canvas.height;
       ctx.fillStyle = "#00c2ff";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth -1, h);
+      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
     }
   }
-
   draw();
 }
 
 /* -----------------------------
-   트랙 UI 생성
+   Track UI
 ------------------------------ */
 tracks.forEach(filename => {
   const encoded = encodeURIComponent(filename);
@@ -153,7 +144,7 @@ tracks.forEach(filename => {
   div.className = "track";
 
   const name = document.createElement("span");
-  name.textContent = filename.replace(".mp3","");
+  name.textContent = filename.replace(".mp3", "");
 
   const controls = document.createElement("div");
   controls.className = "track-controls";
@@ -177,8 +168,8 @@ tracks.forEach(filename => {
       return;
     }
 
-    /* Cloud Run에서 가져오기 */
-    player.src = CLOUD_RUN_BASE + encoded;
+    /* 🔥 Cloud Run 경유 mp3 주소 */
+    player.src = CloudRunBase + encoded;
     player.play();
 
     if (currentBtn) currentBtn.textContent = "Play";
@@ -186,7 +177,6 @@ tracks.forEach(filename => {
 
     btn.textContent = "Pause";
     div.classList.add("active");
-
     currentBtn = btn;
     currentTrackDiv = div;
 
@@ -196,13 +186,12 @@ tracks.forEach(filename => {
 
   controls.appendChild(btn);
   controls.appendChild(eqCanvas);
+
   div.appendChild(name);
   div.appendChild(controls);
-
   trackListDiv.appendChild(div);
 });
 
-/* 트랙 끝났을 때 처리 */
 player.onended = () => {
   if (currentBtn) currentBtn.textContent = "Play";
   if (currentTrackDiv) currentTrackDiv.classList.remove("active");
@@ -211,13 +200,10 @@ player.onended = () => {
 </script>
 
 <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
-
 <script>
 paypal.Buttons({
   createOrder: function(data, actions) {
-    return actions.order.create({
-      purchase_units: [{ amount: { value: '4.99' }}]
-    });
+    return actions.order.create({ purchase_units: [{ amount: { value: '4.99' }}] });
   },
   onApprove: function(data, actions) {
     return actions.order.capture().then(function(details) {
