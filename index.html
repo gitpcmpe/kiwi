@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Music Player + Equalizer + PayPal</title>
+<title>Music Player + PayPal</title>
 <style>
   :root{
     --bg:#0f1724;
@@ -46,13 +46,6 @@
 
   audio { width:100%; max-width:700px; display:block; margin:35px auto 0; }
 
-  .eq {
-    width:60px;
-    height:30px;
-    background:#09121f;
-    border-radius:6px;
-  }
-
   .pay-section {
     max-width:700px; margin:50px auto; padding:22px;
     background:var(--card); border-radius:14px; border:1px solid rgba(255,255,255,0.04);
@@ -68,7 +61,8 @@
 
 <div class="track-list" id="trackList"></div>
 
-<audio id="player" controls></audio>
+<!-- important: crossorigin="anonymous" -->
+<audio id="player" controls crossorigin="anonymous"></audio>
 
 <div class="pay-section">
   <div class="price">$4.99</div>
@@ -78,65 +72,33 @@
 </div>
 
 <script>
-/* -----------------------------
-   Tracks
------------------------------- */
+/* ============================
+   TRACK LIST
+============================= */
+
 const tracks = [
   "Echoes of You.mp3",
   "Memory Loops.mp3",
   "Us, Finally.mp3"
 ];
 
-/* Cloud Run 기반 MP3 URL */
-const CloudRunBase = "https://music-server-777936161804.europe-west1.run.app/music/";
+/* ============================
+   Cloud Run public URL
+   예: https://music-server-xxxx.run.app/music/
+============================= */
+
+const CLOUD_RUN_BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
 
 const trackListDiv = document.getElementById("trackList");
 const player = document.getElementById("player");
 
 let currentBtn = null;
 let currentTrackDiv = null;
-let currentEQ = null;
 
-/* -----------------------------
-   Audio Context + EQ
------------------------------- */
-const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContextClass();
+/* ============================
+   CREATE TRACK UI
+============================= */
 
-const analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
-const bufferLength = analyser.frequencyBinCount;
-const dataArray = new Uint8Array(bufferLength);
-
-const sourceNode = audioCtx.createMediaElementSource(player);
-sourceNode.connect(analyser);
-analyser.connect(audioCtx.destination);
-
-function drawEQ(canvas) {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-
-  function draw() {
-    requestAnimationFrame(draw);
-    if (canvas !== currentEQ) return ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    analyser.getByteFrequencyData(dataArray);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const barWidth = canvas.width / bufferLength;
-
-    for (let i = 0; i < bufferLength; i++) {
-      const v = dataArray[i] / 255;
-      const h = v * canvas.height;
-      ctx.fillStyle = "#00c2ff";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
-    }
-  }
-  draw();
-}
-
-/* -----------------------------
-   Track UI
------------------------------- */
 tracks.forEach(filename => {
   const encoded = encodeURIComponent(filename);
 
@@ -152,41 +114,28 @@ tracks.forEach(filename => {
   const btn = document.createElement("button");
   btn.textContent = "Play";
 
-  const eqCanvas = document.createElement("canvas");
-  eqCanvas.className = "eq";
-  eqCanvas.width = 60;
-  eqCanvas.height = 30;
-
   btn.onclick = async () => {
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-
     if (player.src.includes(encoded) && !player.paused) {
       player.pause();
       btn.textContent = "Play";
       div.classList.remove("active");
-      currentEQ = null;
       return;
     }
 
-    /* 🔥 Cloud Run 경유 mp3 주소 */
-    player.src = CloudRunBase + encoded;
-    player.play();
+    player.src = CLOUD_RUN_BASE + encoded;
+    await player.play();
 
     if (currentBtn) currentBtn.textContent = "Play";
     if (currentTrackDiv) currentTrackDiv.classList.remove("active");
 
     btn.textContent = "Pause";
     div.classList.add("active");
+
     currentBtn = btn;
     currentTrackDiv = div;
-
-    currentEQ = eqCanvas;
-    drawEQ(eqCanvas);
   };
 
   controls.appendChild(btn);
-  controls.appendChild(eqCanvas);
-
   div.appendChild(name);
   div.appendChild(controls);
   trackListDiv.appendChild(div);
@@ -195,11 +144,12 @@ tracks.forEach(filename => {
 player.onended = () => {
   if (currentBtn) currentBtn.textContent = "Play";
   if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-  currentEQ = null;
 };
 </script>
 
+<!-- PAYPAL BUTTON -->
 <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
+
 <script>
 paypal.Buttons({
   createOrder: function(data, actions) {
