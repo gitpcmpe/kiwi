@@ -1,54 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Music Player + Equalizer + PayPal</title>
-<style>
-:root{
-  --bg:#0f1724;
-  --card:#0b1220;
-  --accent:#00c2ff;
-  --text:#e6eef8;
-  --muted:#95a3b6;
-}
-body {
-  margin:0;
-  padding:40px;
-  font-family:Inter, Segoe UI, Arial, sans-serif;
-  background:linear-gradient(180deg,#071029 0%,#071726 60%);
-  color:var(--text);
-}
-h1{text-align:center;margin-bottom:30px;font-weight:600;}
-.track-list{max-width:700px;margin:0 auto;}
-.track{display:flex;justify-content:space-between;align-items:center;
-  background:var(--card);padding:16px 18px;border-radius:12px;margin-bottom:14px;
-  border:1px solid rgba(255,255,255,0.04);transition:0.25s;}
-.track.active{border:1px solid var(--accent);box-shadow:0 0 14px rgba(0,194,255,0.4);}
-.track-controls{display:flex;align-items:center;gap:12px;}
-button{background:var(--accent);border:none;border-radius:8px;padding:8px 18px;
-color:#06202b;font-weight:600;cursor:pointer;transition:0.2s;}
-button:hover{filter:brightness(1.15);}
-audio{width:100%;max-width:700px;display:block;margin:35px auto 0;}
-.eq{width:60px;height:30px;background:#09121f;border-radius:6px;}
-.pay-section{max-width:700px;margin:50px auto;padding:22px;background:var(--card);
-border-radius:14px;border:1px solid rgba(255,255,255,0.04);text-align:center;}
-.price{font-size:20px;margin-bottom:10px;font-weight:600;}
-.desc{color:var(--muted);font-size:14px;margin-bottom:20px;}
-</style>
-</head>
-<body>
-
-<h1>Music Player</h1>
-
-<div class="track-list" id="trackList"></div>
-
 <audio id="player" controls crossorigin="anonymous" volume="1" muted="false"></audio>
-
-<div class="pay-section">
-  <div class="price">$4.99</div>
-  <div class="desc">Unlock full-quality downloads + commercial license.</div>
-  <div id="paypal-button-container"></div>
-</div>
 
 <script>
 const tracks = [
@@ -66,45 +16,9 @@ player.muted = false;
 
 let currentBtn = null;
 let currentTrackDiv = null;
-let currentEQ = null;
 
-// AudioContext + Analyser for EQ
-const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContextClass();
-const analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
-const bufferLength = analyser.frequencyBinCount;
-const dataArray = new Uint8Array(bufferLength);
-
-// MediaElementSource 연결 단 한 번만
-const sourceNode = audioCtx.createMediaElementSource(player);
-sourceNode.connect(analyser);
-analyser.connect(audioCtx.destination);
-
-// EQ 그리기
-function drawEQ(canvas){
-  if(!canvas) return;
-  const ctx = canvas.getContext("2d");
-  function draw(){
-    requestAnimationFrame(draw);
-    if(canvas !== currentEQ){ctx.clearRect(0,0,canvas.width,canvas.height); return;}
-    analyser.getByteFrequencyData(dataArray);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const barWidth = canvas.width/bufferLength;
-    for(let i=0;i<bufferLength;i++){
-      const v=dataArray[i]/255;
-      const h=v*canvas.height;
-      ctx.fillStyle="#00c2ff";
-      ctx.fillRect(i*barWidth,canvas.height-h,barWidth-1,h);
-    }
-  }
-  draw();
-}
-
-// 트랙 UI 생성
 tracks.forEach(filename=>{
   const encoded = encodeURIComponent(filename);
-
   const div = document.createElement("div");
   div.className="track";
 
@@ -117,20 +31,11 @@ tracks.forEach(filename=>{
   const btn = document.createElement("button");
   btn.textContent="Play";
 
-  const eqCanvas = document.createElement("canvas");
-  eqCanvas.className="eq";
-  eqCanvas.width=60;
-  eqCanvas.height=30;
-
-  btn.onclick=async()=>{
-    // 반드시 사용자 클릭 이후 resume
-    if(audioCtx.state==="suspended") await audioCtx.resume();
-
+  btn.onclick = async () => {
     if(player.src.includes(encoded) && !player.paused){
       player.pause();
       btn.textContent="Play";
       div.classList.remove("active");
-      currentEQ=null;
       return;
     }
 
@@ -142,40 +47,18 @@ tracks.forEach(filename=>{
 
     btn.textContent="Pause";
     div.classList.add("active");
-    currentBtn=btn;
-    currentTrackDiv=div;
-
-    currentEQ=eqCanvas;
-    drawEQ(eqCanvas);
+    currentBtn = btn;
+    currentTrackDiv = div;
   };
 
   controls.appendChild(btn);
-  controls.appendChild(eqCanvas);
   div.appendChild(name);
   div.appendChild(controls);
   trackListDiv.appendChild(div);
 });
 
-player.onended=()=>{
+player.onended = () => {
   if(currentBtn) currentBtn.textContent="Play";
   if(currentTrackDiv) currentTrackDiv.classList.remove("active");
-  currentEQ=null;
 };
 </script>
-
-<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
-<script>
-paypal.Buttons({
-  createOrder:function(data,actions){
-    return actions.order.create({purchase_units:[{amount:{value:'4.99'}}]});
-  },
-  onApprove:function(data,actions){
-    return actions.order.capture().then(function(details){
-      alert("Payment completed by "+details.payer.name.given_name);
-    });
-  }
-}).render('#paypal-button-container');
-</script>
-
-</body>
-</html>
