@@ -1,240 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Music Player + Equalizer</title>
-<style>
-  body {
-    margin: 0;
-    padding: 40px;
-    font-family: Arial, sans-serif;
-    background: #0f1724;
-    color: #e6eef8;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kiwi Music Player</title>
 
-  .track-list {
-    max-width: 700px;
-    margin: 0 auto;
-  }
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
 
-  .track {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px; /* 기존 16px → 반으로 줄임 */
-    background: #0b1220;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 6px; /* 기존 12px → 반으로 줄임 */
-  }
+    .track {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: white;
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      height: 65px; /* 🔥 절반 수준으로 줄임 */
+    }
 
-  .track.active {
-    border-color: #00c2ff;
-    box-shadow: 0 0 12px rgba(0,194,255,0.4);
-  }
+    audio {
+      height: 28px; /* 🔥 플레이어 자체도 작게 */
+    }
 
-  button {
-    background: #00c2ff;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 20px;
-    cursor: pointer;
-    color: black;
-    font-weight: bold;
-  }
+    .filename {
+      font-size: 14px;
+      font-weight: bold;
+    }
 
-  .eq {
-    width: 60px;
-    height: 30px;
-    background: #09121f;
-    border-radius: 6px;
-  }
+    .upload-section {
+      margin-top: 40px;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      width: 100%;
+    }
 
-  audio {
-    display: block;
-    margin: 30px auto;
-    width: 100%;
-    max-width: 700px;
-  }
-</style>
+    #uploadBtn {
+      padding: 10px 18px;
+      border: none;
+      background: #4CAF50;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    #uploadBtn:hover {
+      background: #45a049;
+    }
+
+    #uploadStatus {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+  </style>
 </head>
+
 <body>
+  <h1>Kiwi MP3 Player</h1>
 
-<h1 style="text-align:center;">Music Player</h1>
+  <!-- 🔥 MP3 LIST -->
+  <div id="track-list"></div>
 
-<div class="track-list" id="trackList"></div>
+  <!-- 🔥 UPLOAD AREA -->
+  <div class="upload-section">
+    <h3>Upload new MP3</h3>
+    <input type="file" id="uploadFile" accept=".mp3" />
+    <button id="uploadBtn">Upload</button>
+    <div id="uploadStatus"></div>
+  </div>
 
-<audio id="player" controls crossorigin="anonymous"></audio>
+  <script>
+    /* =============================
+       1) 트랙 목록 로딩
+    =================================*/
+    async function fetchTrackList() {
+      try {
+        const resp = await fetch("https://music-server-777936161804.europe-west1.run.app/list");
+        const list = await resp.json();
 
-<!-- 기존 track-list 위쪽 또는 아래쪽에 추가 -->
-<div class="upload-section" style="max-width:700px;margin:20px auto;text-align:center;">
-  <input type="file" id="uploadFile" accept=".mp3" />
-  <button id="uploadBtn">Upload MP3</button>
-  <div id="uploadStatus" style="margin-top:10px;color:#00c2ff;"></div>
-</div>
+        const wrap = document.getElementById("track-list");
+        wrap.innerHTML = "";
 
-<script>
-const uploadFileInput = document.getElementById("uploadFile");
-const uploadBtn = document.getElementById("uploadBtn");
-const uploadStatus = document.getElementById("uploadStatus");
+        list.forEach(track => {
+          const url = `https://storage.googleapis.com/kiwi_251115/${encodeURIComponent(track.filename)}`;
 
-uploadBtn.onclick = async () => {
-  const file = uploadFileInput.files[0];
-  if (!file) {
-    alert("Please select a file first.");
-    return;
-  }
+          wrap.innerHTML += `
+            <div class="track">
+              <div>
+                <div class="filename">${track.filename}</div>
+              </div>
+              <audio controls src="${url}"></audio>
+            </div>
+          `;
+        });
 
-  const formData = new FormData();
-  formData.append("file", file);
-
-  uploadStatus.textContent = "Uploading...";
-
-  try {
-    const resp = await fetch("https://music-server-777936161804.europe-west1.run.app/upload", {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await resp.json();
-    if (resp.ok) {
-      uploadStatus.textContent = "Upload successful!";
-      // 업로드 후 list 갱신
-      fetchTrackList();
-    } else {
-      uploadStatus.textContent = "Upload failed: " + data.error;
-    }
-  } catch (err) {
-    uploadStatus.textContent = "Upload error: " + err.message;
-  }
-};
-</script>
-  
-<script>
-// ---------------------
-// Cloud Run endpoints
-// ---------------------
-const BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
-const LIST_API = "https://music-server-777936161804.europe-west1.run.app/list";
-
-const trackListDiv = document.getElementById("trackList");
-const player = document.getElementById("player");
-
-// AudioContext + EQ
-const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContextClass();
-
-const analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
-const bufferLength = analyser.frequencyBinCount;
-const dataArray = new Uint8Array(bufferLength);
-
-// Connect audio
-const sourceNode = audioCtx.createMediaElementSource(player);
-sourceNode.connect(analyser);
-analyser.connect(audioCtx.destination);
-
-let currentBtn = null;
-let currentTrackDiv = null;
-let currentEQ = null;
-
-// Draw Equalizer
-function drawEQ(canvas) {
-  const ctx = canvas.getContext("2d");
-
-  function draw() {
-    requestAnimationFrame(draw);
-
-    if (canvas !== currentEQ) {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      return;
+      } catch (err) {
+        console.error("List fetch error:", err);
+      }
     }
 
-    analyser.getByteFrequencyData(dataArray);
+    /* =============================
+       2) 파일 업로드 기능
+    =================================*/
+    const uploadBtn = document.getElementById("uploadBtn");
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const barWidth = canvas.width / bufferLength;
+    uploadBtn.onclick = async () => {
+      const file = document.getElementById("uploadFile").files[0];
+      if (!file) return alert("MP3 파일을 선택하세요.");
 
-    for (let i=0; i<bufferLength; i++) {
-      const v = dataArray[i] / 255;
-      const h = v * canvas.height;
-      ctx.fillStyle = "#00c2ff";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
-    }
-  }
-  draw();
-}
+      const fd = new FormData();
+      fd.append("file", file);
 
-// ---------------------
-// Fetch track list from GCS via Cloud Run
-// ---------------------
-fetch(LIST_API)
-  .then(res => res.json())
-  .then(tracks => {
-    tracks.forEach(filename => {
-      const encoded = encodeURIComponent(filename);
+      document.getElementById("uploadStatus").textContent = "Uploading...";
 
-      const div = document.createElement("div");
-      div.className = "track";
+      try {
+        const resp = await fetch("https://music-server-777936161804.europe-west1.run.app/upload", {
+          method: "POST",
+          body: fd
+        });
 
-      const name = document.createElement("span");
-      name.textContent = filename.replace(".mp3", "");
+        const data = await resp.json();
 
-      const controls = document.createElement("div");
-      const btn = document.createElement("button");
-      btn.textContent = "Play";
-
-      const eqCanvas = document.createElement("canvas");
-      eqCanvas.className = "eq";
-      eqCanvas.width = 60;
-      eqCanvas.height = 30;
-
-      btn.onclick = async () => {
-        if (audioCtx.state === "suspended") await audioCtx.resume();
-
-        // Pause if same track
-        if (player.src.includes(encoded) && !player.paused) {
-          player.pause();
-          btn.textContent = "Play";
-          div.classList.remove("active");
-          currentEQ = null;
-          return;
+        if (resp.ok) {
+          document.getElementById("uploadStatus").textContent = "Upload success!";
+          fetchTrackList(); // 🔥 목록 갱신
+        } else {
+          document.getElementById("uploadStatus").textContent = data.error || "Upload failed.";
         }
 
-        // Switch track
-        player.src = BASE + encoded;
-        await player.play();
+      } catch (err) {
+        document.getElementById("uploadStatus").textContent = "Error: " + err.message;
+      }
+    };
 
-        if (currentBtn) currentBtn.textContent = "Play";
-        if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-
-        btn.textContent = "Pause";
-        div.classList.add("active");
-
-        currentBtn = btn;
-        currentTrackDiv = div;
-
-        currentEQ = eqCanvas;
-        drawEQ(eqCanvas);
-      };
-
-      controls.appendChild(btn);
-      controls.appendChild(eqCanvas);
-
-      div.appendChild(name);
-      div.appendChild(controls);
-      trackListDiv.appendChild(div);
-    });
-  })
-  .catch(err => console.error("Failed to fetch mp3 list from GCS:", err));
-
-// Reset UI when song ends
-player.onended = () => {
-  if (currentBtn) currentBtn.textContent = "Play";
-  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-  currentEQ = null;
-};
-</script>
+    /* =============================
+       3) 페이지 로드시 목록 로딩
+    =================================*/
+    fetchTrackList();
+  </script>
 
 </body>
 </html>
