@@ -1,196 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Music Player + Equalizer</title>
-<style>
-  body {
-    margin: 0;
-    padding: 40px;
-    font-family: Arial, sans-serif;
-    background: #0f1724;
-    color: #e6eef8;
-  }
+  <meta charset="UTF-8" />
+  <title>Music Player</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
 
-  .track-list {
-    max-width: 700px;
-    margin: 0 auto;
-  }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
 
-  .track {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    background: #0b1220;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 12px;
-  }
+    .track {
+      background: #1e1e1e;
+      padding: 8px 12px;   /* 기존보다 50% 적은 높이 */
+      margin-bottom: 10px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
 
-  .track.active {
-    border-color: #00c2ff;
-    box-shadow: 0 0 12px rgba(0,194,255,0.4);
-  }
+    /* 상단 라인: Play/Pause + EQ */
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between; /* 좌/우 정렬 */
+      gap: 12px;
+    }
 
-  button {
-    background: #00c2ff;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 20px;
-    cursor: pointer;
-    color: black;
-    font-weight: bold;
-  }
+    button {
+      background: #4CAF50;
+      border: none;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      color: white;
+      border-radius: 6px;
+    }
 
-  .eq {
-    width: 60px;
-    height: 30px;
-    background: #09121f;
-    border-radius: 6px;
-  }
+    button:hover {
+      background: #45a049;
+    }
 
-  audio {
-    display: block;
-    margin: 30px auto;
-    width: 100%;
-    max-width: 700px;
-  }
-</style>
+    /* EQ 슬라이더 세로 고정 크기 조정 */
+    .eq-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .eq-slider {
+      width: 60px;
+    }
+  </style>
 </head>
 <body>
 
-<h1 style="text-align:center;">Music Player</h1>
+<h1>My Music Player</h1>
 
-<div class="track-list" id="trackList"></div>
-
-<audio id="player" controls crossorigin="anonymous"></audio>
+<div id="track-list"></div>
 
 <script>
-// ---------------------
-// Cloud Run endpoint
-// ---------------------
-const BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
-
-// Track list
-const tracks = [
-  "Echoes of You.mp3",
+const TRACKS = [
   "Memory Loops.mp3",
+  "Echoes of You.mp3",
   "Us, Finally.mp3"
 ];
 
-const trackListDiv = document.getElementById("trackList");
-const player = document.getElementById("player");
+const API_BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
 
-// AudioContext + EQ
-const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContextClass();
+let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let currentSource = null;
+let currentAudio = null;
 
-const analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
-const bufferLength = analyser.frequencyBinCount;
-const dataArray = new Uint8Array(bufferLength);
+function createTrackElement(filename) {
+  const container = document.createElement("div");
+  container.className = "track";
 
-// Connect audio
-const sourceNode = audioCtx.createMediaElementSource(player);
-sourceNode.connect(analyser);
-analyser.connect(audioCtx.destination);
+  const title = document.createElement("div");
+  title.textContent = filename;
 
-let currentBtn = null;
-let currentTrackDiv = null;
-let currentEQ = null;
+  const audio = document.createElement("audio");
+  audio.src = API_BASE + encodeURIComponent(filename);
+  audio.crossOrigin = "anonymous";  
 
-// Draw Equalizer
-function drawEQ(canvas) {
-  const ctx = canvas.getContext("2d");
+  const playBtn = document.createElement("button");
+  playBtn.textContent = "Play";
 
-  function draw() {
-    requestAnimationFrame(draw);
+  // EQ (3-band)
+  const eqContainer = document.createElement("div");
+  eqContainer.className = "eq-container";
 
-    if (canvas !== currentEQ) {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      return;
+  const freqs = [100, 1000, 5000]; 
+  const filters = freqs.map(f => {
+    let filter = audioContext.createBiquadFilter();
+    filter.type = "peaking";
+    filter.frequency.value = f;
+    filter.Q.value = 1;
+    return filter;
+  });
+
+  filters.reduce((a, b) => (a.connect(b), b));
+
+  const gainNodes = filters.map((filter, i) => {
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = -15;
+    slider.max = 15;
+    slider.value = 0;
+    slider.className = "eq-slider";
+
+    slider.addEventListener("input", () => {
+      filter.gain.value = slider.value;
+    });
+
+    eqContainer.appendChild(slider);
+    return slider;
+  });
+
+  playBtn.onclick = () => {
+    if (currentAudio && currentAudio !== audio) {
+      currentAudio.pause();
+      if (currentSource) currentSource.disconnect();
     }
 
-    analyser.getByteFrequencyData(dataArray);
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const barWidth = canvas.width / bufferLength;
-
-    for (let i=0; i<bufferLength; i++) {
-      const v = dataArray[i] / 255;
-      const h = v * canvas.height;
-      ctx.fillStyle = "#00c2ff";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
+    if (audio.paused) {
+      audio.play().then(() => {
+        if (currentSource) currentSource.disconnect();
+        currentSource = audioContext.createMediaElementSource(audio);
+        currentSource.connect(filters[0]);
+        filters[filters.length - 1].connect(audioContext.destination);
+      });
+      playBtn.textContent = "Pause";
+      currentAudio = audio;
+    } else {
+      audio.pause();
+      playBtn.textContent = "Play";
     }
-  }
-  draw();
-}
-
-// Build the track UI
-tracks.forEach(filename => {
-  const encoded = encodeURIComponent(filename);
-
-  const div = document.createElement("div");
-  div.className = "track";
-
-  const name = document.createElement("span");
-  name.textContent = filename.replace(".mp3", "");
-
-  const controls = document.createElement("div");
-  const btn = document.createElement("button");
-  btn.textContent = "Play";
-
-  const eqCanvas = document.createElement("canvas");
-  eqCanvas.className = "eq";
-  eqCanvas.width = 60;
-  eqCanvas.height = 30;
-
-  btn.onclick = async () => {
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-
-    // Pause if same track
-    if (player.src.includes(encoded) && !player.paused) {
-      player.pause();
-      btn.textContent = "Play";
-      div.classList.remove("active");
-      currentEQ = null;
-      return;
-    }
-
-    // Switch track
-    player.src = BASE + encoded;
-    await player.play();
-
-    if (currentBtn) currentBtn.textContent = "Play";
-    if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-
-    btn.textContent = "Pause";
-    div.classList.add("active");
-
-    currentBtn = btn;
-    currentTrackDiv = div;
-
-    currentEQ = eqCanvas;
-    drawEQ(eqCanvas);
   };
 
-  controls.appendChild(btn);
-  controls.appendChild(eqCanvas);
+  const topRow = document.createElement("div");
+  topRow.className = "top-row";
+  topRow.appendChild(playBtn);
+  topRow.appendChild(eqContainer);
 
-  div.appendChild(name);
-  div.appendChild(controls);
+  container.appendChild(title);
+  container.appendChild(topRow);
+  return container;
+}
 
-  trackListDiv.appendChild(div);
+TRACKS.forEach(file => {
+  document.getElementById("track-list").appendChild(createTrackElement(file));
 });
-
-// Reset UI when song ends
-player.onended = () => {
-  if (currentBtn) currentBtn.textContent = "Play";
-  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-  currentEQ = null;
-};
 </script>
-
 </body>
 </html>
