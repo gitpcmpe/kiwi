@@ -66,6 +66,50 @@
 
 <audio id="player" controls crossorigin="anonymous"></audio>
 
+<!-- 기존 track-list 위쪽 또는 아래쪽에 추가 -->
+<div class="upload-section" style="max-width:700px;margin:20px auto;text-align:center;">
+  <input type="file" id="uploadFile" accept=".mp3" />
+  <button id="uploadBtn">Upload MP3</button>
+  <div id="uploadStatus" style="margin-top:10px;color:#00c2ff;"></div>
+</div>
+
+<script>
+const uploadFileInput = document.getElementById("uploadFile");
+const uploadBtn = document.getElementById("uploadBtn");
+const uploadStatus = document.getElementById("uploadStatus");
+
+uploadBtn.onclick = async () => {
+  const file = uploadFileInput.files[0];
+  if (!file) {
+    alert("Please select a file first.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  uploadStatus.textContent = "Uploading...";
+
+  try {
+    const resp = await fetch("https://music-server-777936161804.europe-west1.run.app/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await resp.json();
+    if (resp.ok) {
+      uploadStatus.textContent = "Upload successful!";
+      // 업로드 후 list 갱신
+      fetchTrackList();
+    } else {
+      uploadStatus.textContent = "Upload failed: " + data.error;
+    }
+  } catch (err) {
+    uploadStatus.textContent = "Upload error: " + err.message;
+  }
+};
+</script>
+  
 <script>
 // ---------------------
 // Cloud Run endpoints
