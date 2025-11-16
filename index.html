@@ -2,20 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Music Player</title>
-
+<title>Music Player + Equalizer</title>
 <style>
   body {
     margin: 0;
     padding: 40px;
     font-family: Arial, sans-serif;
     background: #0f1724;
-    color: #fff;
-  }
-
-  h1 {
-    text-align:center;
-    margin-bottom:30px;
+    color: #e6eef8;
   }
 
   .track-list {
@@ -27,47 +21,58 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #1b2a41;
     padding: 16px;
-    border-radius: 10px;
+    background: #0b1220;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
     margin-bottom: 12px;
+  }
+
+  .track.active {
+    border-color: #00c2ff;
+    box-shadow: 0 0 12px rgba(0,194,255,0.4);
   }
 
   button {
     background: #00c2ff;
     border: none;
-    padding: 8px 16px;
     border-radius: 8px;
-    font-weight: bold;
+    padding: 8px 20px;
     cursor: pointer;
+    color: black;
+    font-weight: bold;
+  }
+
+  .eq {
+    width: 60px;
+    height: 30px;
+    background: #09121f;
+    border-radius: 6px;
   }
 
   audio {
+    display: block;
+    margin: 30px auto;
     width: 100%;
     max-width: 700px;
-    margin: 25px auto;
-    display: block;
   }
 </style>
 </head>
-
 <body>
 
-<h1>Music Player</h1>
+<h1 style="text-align:center;">Music Player</h1>
 
 <div class="track-list" id="trackList"></div>
 
-<audio id="player" controls></audio>
+<audio id="player" controls crossorigin="anonymous"></audio>
 
 <script>
-// ================================
-// 🔥 Cloud Run URL (당신의 서버)
-// ================================
+// ---------------------
+// Cloud Run endpoint
+// ---------------------
 const BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
 
-// ================================
-// 🔥 재생할 mp3 목록
-// ================================
+// Track list
 const tracks = [
   "Echoes of You.mp3",
   "Memory Loops.mp3",
@@ -77,53 +82,113 @@ const tracks = [
 const trackListDiv = document.getElementById("trackList");
 const player = document.getElementById("player");
 
-let currentBtn = null;
-let currentDiv = null;
+// AudioContext + EQ
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContextClass();
 
-// ================================
-// 🔥 Track 리스트 생성
-// ================================
+const analyser = audioCtx.createAnalyser();
+analyser.fftSize = 64;
+const bufferLength = analyser.frequencyBinCount;
+const dataArray = new Uint8Array(bufferLength);
+
+// Connect audio
+const sourceNode = audioCtx.createMediaElementSource(player);
+sourceNode.connect(analyser);
+analyser.connect(audioCtx.destination);
+
+let currentBtn = null;
+let currentTrackDiv = null;
+let currentEQ = null;
+
+// Draw Equalizer
+function drawEQ(canvas) {
+  const ctx = canvas.getContext("2d");
+
+  function draw() {
+    requestAnimationFrame(draw);
+
+    if (canvas !== currentEQ) {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      return;
+    }
+
+    analyser.getByteFrequencyData(dataArray);
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const barWidth = canvas.width / bufferLength;
+
+    for (let i=0; i<bufferLength; i++) {
+      const v = dataArray[i] / 255;
+      const h = v * canvas.height;
+      ctx.fillStyle = "#00c2ff";
+      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
+    }
+  }
+  draw();
+}
+
+// Build the track UI
 tracks.forEach(filename => {
   const encoded = encodeURIComponent(filename);
 
   const div = document.createElement("div");
   div.className = "track";
 
-  const lbl = document.createElement("span");
-  lbl.textContent = filename.replace(".mp3", "");
+  const name = document.createElement("span");
+  name.textContent = filename.replace(".mp3", "");
 
+  const controls = document.createElement("div");
   const btn = document.createElement("button");
   btn.textContent = "Play";
 
-  btn.onclick = () => {
-    // 같은 파일 play 중이면 pause
+  const eqCanvas = document.createElement("canvas");
+  eqCanvas.className = "eq";
+  eqCanvas.width = 60;
+  eqCanvas.height = 30;
+
+  btn.onclick = async () => {
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+
+    // Pause if same track
     if (player.src.includes(encoded) && !player.paused) {
       player.pause();
       btn.textContent = "Play";
+      div.classList.remove("active");
+      currentEQ = null;
       return;
     }
 
-    // 새 파일 재생
+    // Switch track
     player.src = BASE + encoded;
-    player.play();
+    await player.play();
 
-    // 이전 버튼 초기화
     if (currentBtn) currentBtn.textContent = "Play";
+    if (currentTrackDiv) currentTrackDiv.classList.remove("active");
 
     btn.textContent = "Pause";
+    div.classList.add("active");
+
     currentBtn = btn;
+    currentTrackDiv = div;
+
+    currentEQ = eqCanvas;
+    drawEQ(eqCanvas);
   };
 
-  div.appendChild(lbl);
-  div.appendChild(btn);
+  controls.appendChild(btn);
+  controls.appendChild(eqCanvas);
+
+  div.appendChild(name);
+  div.appendChild(controls);
+
   trackListDiv.appendChild(div);
 });
 
-// ================================
-// 🔥 재생 끝나면 버튼 상태 복구
-// ================================
+// Reset UI when song ends
 player.onended = () => {
   if (currentBtn) currentBtn.textContent = "Play";
+  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
+  currentEQ = null;
 };
 </script>
 
