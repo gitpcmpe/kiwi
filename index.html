@@ -68,10 +68,16 @@
 
 <script>
 // ---------------------
-// Cloud Run endpoints
+// Cloud Run endpoint
 // ---------------------
 const BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
-const LIST_API = "https://music-server-777936161804.europe-west1.run.app/list";
+
+// Track list
+const tracks = [
+  "Echoes of You.mp3",
+  "Memory Loops.mp3",
+  "Us, Finally.mp3"
+];
 
 const trackListDiv = document.getElementById("trackList");
 const player = document.getElementById("player");
@@ -121,68 +127,62 @@ function drawEQ(canvas) {
   draw();
 }
 
-// ---------------------
-// Fetch track list from GCS via Cloud Run
-// ---------------------
-fetch(LIST_API)
-  .then(res => res.json())
-  .then(tracks => {
-    tracks.forEach(filename => {
-      const encoded = encodeURIComponent(filename);
+// Build the track UI
+tracks.forEach(filename => {
+  const encoded = encodeURIComponent(filename);
 
-      const div = document.createElement("div");
-      div.className = "track";
+  const div = document.createElement("div");
+  div.className = "track";
 
-      const name = document.createElement("span");
-      name.textContent = filename.replace(".mp3", "");
+  const name = document.createElement("span");
+  name.textContent = filename.replace(".mp3", "");
 
-      const controls = document.createElement("div");
-      const btn = document.createElement("button");
+  const controls = document.createElement("div");
+  const btn = document.createElement("button");
+  btn.textContent = "Play";
+
+  const eqCanvas = document.createElement("canvas");
+  eqCanvas.className = "eq";
+  eqCanvas.width = 60;
+  eqCanvas.height = 30;
+
+  btn.onclick = async () => {
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+
+    // Pause if same track
+    if (player.src.includes(encoded) && !player.paused) {
+      player.pause();
       btn.textContent = "Play";
+      div.classList.remove("active");
+      currentEQ = null;
+      return;
+    }
 
-      const eqCanvas = document.createElement("canvas");
-      eqCanvas.className = "eq";
-      eqCanvas.width = 60;
-      eqCanvas.height = 30;
+    // Switch track
+    player.src = BASE + encoded;
+    await player.play();
 
-      btn.onclick = async () => {
-        if (audioCtx.state === "suspended") await audioCtx.resume();
+    if (currentBtn) currentBtn.textContent = "Play";
+    if (currentTrackDiv) currentTrackDiv.classList.remove("active");
 
-        // Pause if same track
-        if (player.src.includes(encoded) && !player.paused) {
-          player.pause();
-          btn.textContent = "Play";
-          div.classList.remove("active");
-          currentEQ = null;
-          return;
-        }
+    btn.textContent = "Pause";
+    div.classList.add("active");
 
-        // Switch track
-        player.src = BASE + encoded;
-        await player.play();
+    currentBtn = btn;
+    currentTrackDiv = div;
 
-        if (currentBtn) currentBtn.textContent = "Play";
-        if (currentTrackDiv) currentTrackDiv.classList.remove("active");
+    currentEQ = eqCanvas;
+    drawEQ(eqCanvas);
+  };
 
-        btn.textContent = "Pause";
-        div.classList.add("active");
+  controls.appendChild(btn);
+  controls.appendChild(eqCanvas);
 
-        currentBtn = btn;
-        currentTrackDiv = div;
+  div.appendChild(name);
+  div.appendChild(controls);
 
-        currentEQ = eqCanvas;
-        drawEQ(eqCanvas);
-      };
-
-      controls.appendChild(btn);
-      controls.appendChild(eqCanvas);
-
-      div.appendChild(name);
-      div.appendChild(controls);
-      trackListDiv.appendChild(div);
-    });
-  })
-  .catch(err => console.error("Failed to fetch mp3 list from GCS:", err));
+  trackListDiv.appendChild(div);
+});
 
 // Reset UI when song ends
 player.onended = () => {
