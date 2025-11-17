@@ -1,34 +1,268 @@
-.track {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;       /* 세로 중앙 정렬 유지 */
-  padding: 14px 20px;        /* 패딩을 버튼/텍스트/eq 맞춤 */
-  background: rgba(20, 20, 35, 0.6);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.1);
-  margin-bottom: 12px;
-  transition: all 0.3s ease;
-  min-height: 60px;          /* 카드 높이를 일정하게 유지 */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Artistic Music Player</title>
+<style>
+  /* 전체 배경 */
+  body {
+    margin: 0;
+    padding: 40px;
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    background: radial-gradient(circle at top left, #0d0d0f, #1a1a2e);
+    color: #f0f0f5;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 3em;
+    color: #ffe6f0;
+    text-shadow: 0 0 12px rgba(255,230,240,0.5);
+    margin-bottom: 40px;
+  }
+
+  /* 업로드 박스 */
+  .upload-box {
+    margin: 30px auto;
+    max-width: 700px;
+    padding: 25px;
+    background: rgba(20,20,35,0.6);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    text-align: center;
+    backdrop-filter: blur(10px);
+    margin-bottom: 50px;
+  }
+
+  .upload-box h3 {
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    color: #ffccff;
+  }
+
+  #uploadStatus {
+    margin-top: 10px;
+    font-size: 0.95em;
+    color: #ffe6f0;
+  }
+
+  /* 트랙 리스트 */
+  .track-list {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .track {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;       /* 세로 중앙 정렬 */
+    padding: 14px 20px;        /* 균형 맞춤 */
+    background: rgba(20, 20, 35, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    min-height: 60px;          /* 카드 높이 통일 */
+  }
+
+  .track:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(255, 182, 193, 0.3);
+  }
+
+  .track.active {
+    border-color: #ff66cc;
+    box-shadow: 0 0 20px rgba(255,102,204,0.6);
+    background: rgba(30, 10, 30, 0.7);
+  }
+
+  .track span {
+    font-size: 1.2em;
+    font-weight: 500;
+    color: #ffe6f0;
+    line-height: 1.2em;        /* 텍스트 높이 맞춤 */
+  }
+
+  /* 버튼 */
+  button {
+    background: linear-gradient(135deg, #ff66cc, #ff99dd);
+    border: none;
+    border-radius: 30px;
+    padding: 12px 28px;        /* 높이 버튼 맞춤 */
+    cursor: pointer;
+    color: #fff;
+    font-weight: bold;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(255,102,204,0.4);
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255,102,204,0.6);
+  }
+
+  /* EQ */
+  .eq {
+    width: 80px;
+    height: 36px;              /* 버튼 높이에 맞춤 */
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    margin-left: 12px;
+    box-shadow: inset 0 0 10px rgba(255,182,193,0.2);
+  }
+
+  /* 오디오 컨트롤 */
+  audio {
+    display: block;
+    margin: 40px auto;
+    width: 100%;
+    max-width: 700px;
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(255,182,193,0.3);
+    background: rgba(255,255,255,0.05);
+  }
+</style>
+</head>
+<body>
+
+<h1>Artistic Music Player</h1>
+
+<div class="upload-box">
+  <h3>Upload MP3</h3>
+  <input type="file" id="uploadFile" accept="audio/mp3" />
+  <button onclick="uploadMP3()">Upload</button>
+  <p id="uploadStatus"></p>
+</div>
+
+<div class="track-list" id="trackList"></div>
+
+<audio id="player" controls crossorigin="anonymous"></audio>
+
+<script>
+const BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
+const LIST_API = "https://music-server-777936161804.europe-west1.run.app/list";
+const UPLOAD_API = "https://music-server-777936161804.europe-west1.run.app/upload";
+
+const trackListDiv = document.getElementById("trackList");
+const player = document.getElementById("player");
+
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContextClass();
+const analyser = audioCtx.createAnalyser();
+analyser.fftSize = 64;
+const bufferLength = analyser.frequencyBinCount;
+const dataArray = new Uint8Array(bufferLength);
+const sourceNode = audioCtx.createMediaElementSource(player);
+sourceNode.connect(analyser);
+analyser.connect(audioCtx.destination);
+
+let currentBtn = null;
+let currentTrackDiv = null;
+let currentEQ = null;
+
+function drawEQ(canvas) {
+  const ctx = canvas.getContext("2d");
+  function draw() {
+    requestAnimationFrame(draw);
+    if (canvas !== currentEQ) {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      return;
+    }
+    analyser.getByteFrequencyData(dataArray);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const barWidth = canvas.width / bufferLength;
+    for (let i=0; i<bufferLength; i++) {
+      const v = dataArray[i] / 255;
+      const h = v * canvas.height;
+      ctx.fillStyle = "#ff66cc";
+      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
+    }
+  }
+  draw();
 }
 
-.track span {
-  font-size: 1.2em;
-  font-weight: 500;
-  color: #ffe6f0;
-  line-height: 1.2em;        /* 텍스트 높이 맞춤 */
+// Fetch track list
+fetch(LIST_API)
+  .then(res => res.json())
+  .then(tracks => {
+    tracks.forEach(filename => {
+      const encoded = encodeURIComponent(filename);
+      const div = document.createElement("div");
+      div.className = "track";
+      const name = document.createElement("span");
+      name.textContent = filename.replace(".mp3", "");
+      const controls = document.createElement("div");
+      const btn = document.createElement("button");
+      btn.textContent = "Play";
+      const eqCanvas = document.createElement("canvas");
+      eqCanvas.className = "eq";
+      eqCanvas.width = 80;
+      eqCanvas.height = 36;
+
+      btn.onclick = async () => {
+        if (audioCtx.state === "suspended") await audioCtx.resume();
+        if (player.src.includes(encoded) && !player.paused) {
+          player.pause();
+          btn.textContent = "Play";
+          div.classList.remove("active");
+          currentEQ = null;
+          return;
+        }
+        player.src = BASE + encoded;
+        await player.play();
+        if (currentBtn) currentBtn.textContent = "Play";
+        if (currentTrackDiv) currentTrackDiv.classList.remove("active");
+        btn.textContent = "Pause";
+        div.classList.add("active");
+        currentBtn = btn;
+        currentTrackDiv = div;
+        currentEQ = eqCanvas;
+        drawEQ(eqCanvas);
+      };
+
+      controls.appendChild(btn);
+      controls.appendChild(eqCanvas);
+      div.appendChild(name);
+      div.appendChild(controls);
+      trackListDiv.appendChild(div);
+    });
+  })
+  .catch(err => console.error("Failed to fetch mp3 list:", err));
+
+async function uploadMP3() {
+  const fileInput = document.getElementById("uploadFile");
+  const status = document.getElementById("uploadStatus");
+  if (!fileInput.files.length) {
+    status.textContent = "Please select an MP3 file.";
+    return;
+  }
+  const file = fileInput.files[0];
+  if (!file.name.endsWith(".mp3")) {
+    status.textContent = "Only MP3 files are allowed.";
+    return;
+  }
+  const formData = new FormData();
+  formData.append("file", file);
+  status.textContent = "Uploading...";
+  try {
+    const res = await fetch(UPLOAD_API, { method: "POST", body: formData });
+    if (!res.ok) throw new Error("Upload failed");
+    status.textContent = "Upload complete! Refreshing...";
+    setTimeout(() => location.reload(), 1000);
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Upload failed.";
+  }
 }
 
-button {
-  padding: 12px 28px;        /* 높이 버튼 맞춤 */
-  font-size: 1em;
-}
+player.onended = () => {
+  if (currentBtn) currentBtn.textContent = "Play";
+  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
+  currentEQ = null;
+};
+</script>
 
-.eq {
-  width: 80px;
-  height: 36px;              /* 버튼과 텍스트 높이에 맞춤 */
-  background: rgba(255,255,255,0.05);
-  border-radius: 10px;
-  margin-left: 12px;
-  box-shadow: inset 0 0 10px rgba(255,182,193,0.2);
-}
+</body>
+</html>
