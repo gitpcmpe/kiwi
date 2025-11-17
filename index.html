@@ -1,15 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Music Player + Equalizer</title>
 <style>
   body {
     margin: 0;
     padding: 40px;
-    font-family: Arial, sans-serif;
-    background: #0f1724;
-    color: #e6eef8;
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    background: radial-gradient(circle at top left, #0d0d0f, #1a1a2e);
+    color: #f0f0f5;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 3em;
+    color: #ffe6f0;
+    text-shadow: 0 0 12px rgba(255,230,240,0.5);
+    margin-bottom: 40px;
   }
 
   .track-list {
@@ -21,238 +24,91 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px;
-    background: #0b1220;
-    border-radius: 12px;
+    padding: 12px 20px;
+    background: rgba(20, 20, 35, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
     border: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 6px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+  }
+
+  .track:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(255, 182, 193, 0.3);
   }
 
   .track.active {
-    border-color: #00c2ff;
-    box-shadow: 0 0 12px rgba(0,194,255,0.4);
+    border-color: #ff66cc;
+    box-shadow: 0 0 20px rgba(255,102,204,0.6);
+    background: rgba(30, 10, 30, 0.7);
+  }
+
+  .track span {
+    font-size: 1.2em;
+    font-weight: 500;
+    color: #ffe6f0;
   }
 
   button {
-    background: #00c2ff;
+    background: linear-gradient(135deg, #ff66cc, #ff99dd);
     border: none;
-    border-radius: 8px;
-    padding: 8px 20px;
+    border-radius: 30px;
+    padding: 10px 24px;
     cursor: pointer;
-    color: black;
+    color: #fff;
     font-weight: bold;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(255,102,204,0.4);
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255,102,204,0.6);
   }
 
   .eq {
-    width: 60px;
-    height: 30px;
-    background: #09121f;
-    border-radius: 6px;
+    width: 80px;
+    height: 35px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    margin-left: 12px;
+    box-shadow: inset 0 0 10px rgba(255,182,193,0.2);
   }
 
   audio {
     display: block;
-    margin: 30px auto;
+    margin: 40px auto;
     width: 100%;
     max-width: 700px;
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(255,182,193,0.3);
+    background: rgba(255,255,255,0.05);
   }
 
-  /* ★ 업로드 UI 스타일 */
+  /* 업로드 UI */
   .upload-box {
     margin: 30px auto;
     max-width: 700px;
-    padding: 20px;
-    background: #0b1220;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.15);
+    padding: 25px;
+    background: rgba(20,20,35,0.6);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
     text-align: center;
+    backdrop-filter: blur(10px);
+    margin-bottom: 50px;
+  }
+
+  .upload-box h3 {
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    color: #ffccff;
+  }
+
+  #uploadStatus {
+    margin-top: 10px;
+    font-size: 0.95em;
+    color: #ffe6f0;
   }
 </style>
-</head>
-<body>
-
-<h1 style="text-align:center;">Music Player</h1>
-
-<!-- ★ 업로드 UI 추가 -->
-<div class="upload-box">
-  <h3>Upload MP3</h3>
-  <input type="file" id="uploadFile" accept="audio/mp3" />
-  <button onclick="uploadMP3()">Upload</button>
-  <p id="uploadStatus"></p>
-</div>
-
-<div class="track-list" id="trackList"></div>
-
-<audio id="player" controls crossorigin="anonymous"></audio>
-
-<script>
-// ---------------------
-// Cloud Run endpoints
-// ---------------------
-const BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
-const LIST_API = "https://music-server-777936161804.europe-west1.run.app/list";
-const UPLOAD_API = "https://music-server-777936161804.europe-west1.run.app/upload";  // ★ 업로드 API 추가
-
-const trackListDiv = document.getElementById("trackList");
-const player = document.getElementById("player");
-
-// AudioContext + EQ (기존 그대로)
-const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContextClass();
-
-const analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
-const bufferLength = analyser.frequencyBinCount;
-const dataArray = new Uint8Array(bufferLength);
-
-const sourceNode = audioCtx.createMediaElementSource(player);
-sourceNode.connect(analyser);
-analyser.connect(audioCtx.destination);
-
-let currentBtn = null;
-let currentTrackDiv = null;
-let currentEQ = null;
-
-// Draw Equalizer (기존 그대로)
-function drawEQ(canvas) {
-  const ctx = canvas.getContext("2d");
-
-  function draw() {
-    requestAnimationFrame(draw);
-
-    if (canvas !== currentEQ) {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      return;
-    }
-
-    analyser.getByteFrequencyData(dataArray);
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const barWidth = canvas.width / bufferLength;
-
-    for (let i=0; i<bufferLength; i++) {
-      const v = dataArray[i] / 255;
-      const h = v * canvas.height;
-      ctx.fillStyle = "#00c2ff";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
-    }
-  }
-  draw();
-}
-
-// ---------------------
-// Fetch track list from GCS via Cloud Run (기존 그대로)
-// ---------------------
-fetch(LIST_API)
-  .then(res => res.json())
-  .then(tracks => {
-    tracks.forEach(filename => {
-      const encoded = encodeURIComponent(filename);
-
-      const div = document.createElement("div");
-      div.className = "track";
-
-      const name = document.createElement("span");
-      name.textContent = filename.replace(".mp3", "");
-
-      const controls = document.createElement("div");
-      const btn = document.createElement("button");
-      btn.textContent = "Play";
-
-      const eqCanvas = document.createElement("canvas");
-      eqCanvas.className = "eq";
-      eqCanvas.width = 60;
-      eqCanvas.height = 30;
-
-      btn.onclick = async () => {
-        if (audioCtx.state === "suspended") await audioCtx.resume();
-
-        if (player.src.includes(encoded) && !player.paused) {
-          player.pause();
-          btn.textContent = "Play";
-          div.classList.remove("active");
-          currentEQ = null;
-          return;
-        }
-
-        player.src = BASE + encoded;
-        await player.play();
-
-        if (currentBtn) currentBtn.textContent = "Play";
-        if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-
-        btn.textContent = "Pause";
-        div.classList.add("active");
-
-        currentBtn = btn;
-        currentTrackDiv = div;
-
-        currentEQ = eqCanvas;
-        drawEQ(eqCanvas);
-      };
-
-      controls.appendChild(btn);
-      controls.appendChild(eqCanvas);
-
-      div.appendChild(name);
-      div.appendChild(controls);
-      trackListDiv.appendChild(div);
-    });
-  })
-  .catch(err => console.error("Failed to fetch mp3 list from GCS:", err));
-
-
-// ---------------------
-// ★ 업로드 기능 추가
-// ---------------------
-async function uploadMP3() {
-  const fileInput = document.getElementById("uploadFile");
-  const status = document.getElementById("uploadStatus");
-
-  if (!fileInput.files.length) {
-    status.textContent = "Please select an MP3 file.";
-    return;
-  }
-
-  const file = fileInput.files[0];
-
-  // MP3 체크
-  if (!file.name.endsWith(".mp3")) {
-    status.textContent = "Only MP3 files are allowed.";
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  status.textContent = "Uploading...";
-
-  try {
-    const res = await fetch(UPLOAD_API, {
-      method: "POST",
-      body: formData
-    });
-
-    if (!res.ok) throw new Error("Upload failed");
-
-    status.textContent = "Upload complete! Refreshing...";
-
-    // 업로드 완료 후 새 목록 자동 로드
-    setTimeout(() => location.reload(), 1000);
-
-  } catch (err) {
-    console.error(err);
-    status.textContent = "Upload failed.";
-  }
-}
-
-// Reset UI when song ends (기존 그대로)
-player.onended = () => {
-  if (currentBtn) currentBtn.textContent = "Play";
-  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-  currentEQ = null;
-};
-</script>
-
-</body>
-</html>
