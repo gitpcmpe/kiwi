@@ -2,132 +2,234 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Artistic Music Player</title>
+<title>Multi-Skin Music Player</title>
 <style>
-  body {
-    margin: 0;
-    padding: 40px;
-    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-    background: radial-gradient(circle at top left, #0d0d0f, #1a1a2e);
-    color: #f0f0f5;
-  }
+/* ------------------------- */
+/* 기본 구조 및 공통 스타일 */
+/* ------------------------- */
+body {
+  margin: 0;
+  padding: 40px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #f0f0f5;
+}
 
-  h1 {
-    text-align: center;
-    font-size: 3em;
-    color: #ffe6f0;
-    text-shadow: 0 0 12px rgba(255,230,240,0.5);
-    margin-bottom: 40px;
-  }
+h1 {
+  text-align: center;
+  font-size: 3em;
+  margin-bottom: 40px;
+}
 
-  .upload-box {
-    margin: 30px auto;
-    max-width: 700px;
-    padding: 25px;
-    background: rgba(20,20,35,0.6);
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
-    text-align: center;
-    backdrop-filter: blur(10px);
-    margin-bottom: 50px;
-  }
+/* 업로드 박스 */
+.upload-box {
+  margin: 30px auto;
+  max-width: 700px;
+  padding: 25px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+  backdrop-filter: blur(10px);
+  margin-bottom: 50px;
+}
 
-  .upload-box h3 {
-    font-size: 1.5em;
-    margin-bottom: 15px;
-    color: #ffccff;
-  }
+.upload-box h3 {
+  font-size: 1.5em;
+  margin-bottom: 15px;
+}
 
-  #uploadStatus {
-    margin-top: 10px;
-    font-size: 0.95em;
-    color: #ffe6f0;
-  }
+#uploadStatus {
+  margin-top: 10px;
+  font-size: 0.95em;
+}
 
-  .track-list {
-    max-width: 700px;
-    margin: 0 auto;
-  }
+/* 트랙 리스트 */
+.track-list {
+  max-width: 700px;
+  margin: 0 auto;
+}
 
-  .track {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 20px;
-    background: rgba(20, 20, 35, 0.6);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 12px;
-    transition: all 0.3s ease;
-    min-height: 60px;
-  }
+.track {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+  min-height: 60px;
+}
 
-  .track:hover {
-    transform: scale(1.02);
-    box-shadow: 0 0 20px rgba(255, 182, 193, 0.3);
-  }
+.track:hover {
+  transform: scale(1.02);
+}
 
-  .track.active {
-    border-color: #ff66cc;
-    box-shadow: 0 0 20px rgba(255,102,204,0.6);
-    background: rgba(30, 10, 30, 0.7);
-  }
+.track span {
+  font-size: 1.2em;
+  font-weight: 500;
+  line-height: 1.2em;
+}
 
-  .track span {
-    font-size: 1.2em;
-    font-weight: 500;
-    color: #ffe6f0;
-    line-height: 1.2em;
-  }
+.track-controls {
+  display: flex;
+  align-items: center;
+}
 
-  /* controls wrapper: 버튼 + EQ */
-  .track-controls {
-    display: flex;
-    align-items: center;   /* 버튼과 EQ 수직 정렬 */
-  }
+button {
+  padding: 12px 28px;
+  font-size: 1em;
+  line-height: 36px;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
 
-  button {
-    padding: 12px 28px;
-    font-size: 1em;
-    line-height: 36px;    /* EQ와 높이 동일 */
-    background: linear-gradient(135deg, #ff66cc, #ff99dd);
-    border: none;
-    border-radius: 30px;
-    cursor: pointer;
-    color: #fff;
-    font-weight: bold;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(255,102,204,0.4);
-  }
+button:hover {
+  transform: translateY(-2px);
+}
 
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255,102,204,0.6);
-  }
+.eq {
+  width: 80px;
+  height: 36px;
+  border-radius: 10px;
+  margin-left: 12px;
+}
 
-  .eq {
-    width: 80px;
-    height: 36px;          /* 버튼과 동일 높이 */
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-    margin-left: 12px;
-    box-shadow: inset 0 0 10px rgba(255,182,193,0.2);
-  }
+audio {
+  display: block;
+  margin: 40px auto;
+  width: 100%;
+  max-width: 700px;
+  border-radius: 20px;
+}
 
-  audio {
-    display: block;
-    margin: 40px auto;
-    width: 100%;
-    max-width: 700px;
-    border-radius: 20px;
-    box-shadow: 0 0 20px rgba(255,182,193,0.3);
-    background: rgba(255,255,255,0.05);
-  }
+/* ------------------------- */
+/* Skin 1: Pink/Purple Neon */
+/* ------------------------- */
+.skin1 body {
+  background: radial-gradient(circle at top left, #0d0d0f, #1a1a2e);
+  color: #f0f0f5;
+}
+
+.skin1 h1 {
+  color: #ffe6f0;
+  text-shadow: 0 0 12px rgba(255,230,240,0.5);
+}
+
+.skin1 .upload-box {
+  background: rgba(20,20,35,0.6);
+  border-color: rgba(255,255,255,0.1);
+  color: #ffe6f0;
+}
+
+.skin1 .track {
+  background: rgba(20, 20, 35, 0.6);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.skin1 .track.active {
+  border-color: #ff66cc;
+  box-shadow: 0 0 20px rgba(255,102,204,0.6);
+  background: rgba(30, 10, 30, 0.7);
+}
+
+.skin1 button {
+  background: linear-gradient(135deg, #ff66cc, #ff99dd);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255,102,204,0.4);
+}
+
+.skin1 .eq {
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 10px rgba(255,182,193,0.2);
+}
+
+/* ------------------------- */
+/* Skin 2: Blue/Mint Neon */
+/* ------------------------- */
+.skin2 body {
+  background: radial-gradient(circle at top right, #001f3f, #003366);
+  color: #d0f0ff;
+}
+
+.skin2 h1 {
+  color: #a0e6ff;
+  text-shadow: 0 0 12px rgba(160,230,255,0.5);
+}
+
+.skin2 .upload-box {
+  background: rgba(0,20,40,0.6);
+  border-color: rgba(200,255,255,0.1);
+  color: #a0e6ff;
+}
+
+.skin2 .track {
+  background: rgba(0,20,40,0.6);
+  border-color: rgba(200,255,255,0.1);
+}
+
+.skin2 .track.active {
+  border-color: #33ffff;
+  box-shadow: 0 0 20px rgba(51,255,255,0.6);
+  background: rgba(0,40,60,0.7);
+}
+
+.skin2 button {
+  background: linear-gradient(135deg, #33ffff, #66ffff);
+  color: #000;
+  box-shadow: 0 4px 12px rgba(51,255,255,0.4);
+}
+
+.skin2 .eq {
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 10px rgba(51,255,255,0.2);
+}
+
+/* ------------------------- */
+/* Skin 3: Orange/Yellow Warm */
+/* ------------------------- */
+.skin3 body {
+  background: radial-gradient(circle at bottom left, #331900, #663300);
+  color: #fff0d0;
+}
+
+.skin3 h1 {
+  color: #ffd080;
+  text-shadow: 0 0 12px rgba(255,208,128,0.5);
+}
+
+.skin3 .upload-box {
+  background: rgba(60,30,10,0.6);
+  border-color: rgba(255,208,128,0.1);
+  color: #ffd080;
+}
+
+.skin3 .track {
+  background: rgba(60,30,10,0.6);
+  border-color: rgba(255,208,128,0.1);
+}
+
+.skin3 .track.active {
+  border-color: #ffaa33;
+  box-shadow: 0 0 20px rgba(255,170,51,0.6);
+  background: rgba(80,40,10,0.7);
+}
+
+.skin3 button {
+  background: linear-gradient(135deg, #ffaa33, #ffdd66);
+  color: #000;
+  box-shadow: 0 4px 12px rgba(255,170,51,0.4);
+}
+
+.skin3 .eq {
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 10px rgba(255,170,51,0.2);
+}
 </style>
 </head>
 <body>
-
 <h1>Artistic Music Player</h1>
 
 <div class="upload-box">
@@ -138,10 +240,19 @@
 </div>
 
 <div class="track-list" id="trackList"></div>
-
 <audio id="player" controls crossorigin="anonymous"></audio>
 
 <script>
+// -------------------------
+// 선택 스킨 적용
+// -------------------------
+// 1, 2, 3 중 하나 선택
+const selectedSkin = 2; // 예: skin2 적용
+document.body.classList.add(`skin${selectedSkin}`);
+
+// -------------------------
+// 플레이어 JS (기존 EQ, 트랙 리스트, 업로드 기능)
+// -------------------------
 const BASE = "https://music-server-777936161804.europe-west1.run.app/music/";
 const LIST_API = "https://music-server-777936161804.europe-west1.run.app/list";
 const UPLOAD_API = "https://music-server-777936161804.europe-west1.run.app/upload";
@@ -167,18 +278,18 @@ function drawEQ(canvas) {
   const ctx = canvas.getContext("2d");
   function draw() {
     requestAnimationFrame(draw);
-    if (canvas !== currentEQ) {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      return;
-    }
+    if (canvas !== currentEQ) { ctx.clearRect(0,0,canvas.width,canvas.height); return; }
     analyser.getByteFrequencyData(dataArray);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     const barWidth = canvas.width / bufferLength;
-    for (let i=0; i<bufferLength; i++) {
-      const v = dataArray[i] / 255;
-      const h = v * canvas.height;
-      ctx.fillStyle = "#ff66cc";
-      ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 1, h);
+    for (let i=0; i<bufferLength; i++){
+      const v = dataArray[i]/255;
+      const h = v*canvas.height;
+      // EQ 색상 skin 따라
+      if(document.body.classList.contains("skin1")) ctx.fillStyle="#ff66cc";
+      else if(document.body.classList.contains("skin2")) ctx.fillStyle="#33ffff";
+      else ctx.fillStyle="#ffaa33";
+      ctx.fillRect(i*barWidth, canvas.height - h, barWidth-1, h);
     }
   }
   draw();
@@ -186,89 +297,82 @@ function drawEQ(canvas) {
 
 // Fetch track list
 fetch(LIST_API)
-  .then(res => res.json())
-  .then(tracks => {
-    tracks.forEach(filename => {
-      const encoded = encodeURIComponent(filename);
-      const div = document.createElement("div");
-      div.className = "track";
+.then(res => res.json())
+.then(tracks => {
+  tracks.forEach(filename => {
+    const encoded = encodeURIComponent(filename);
+    const div = document.createElement("div");
+    div.className = "track";
 
-      const name = document.createElement("span");
-      name.textContent = filename.replace(".mp3", "");
+    const name = document.createElement("span");
+    name.textContent = filename.replace(".mp3","");
 
-      const controls = document.createElement("div");
-      controls.className = "track-controls";  // wrapper
+    const controls = document.createElement("div");
+    controls.className = "track-controls";
 
-      const btn = document.createElement("button");
-      btn.textContent = "Play";
+    const btn = document.createElement("button");
+    btn.textContent = "Play";
 
-      const eqCanvas = document.createElement("canvas");
-      eqCanvas.className = "eq";
-      eqCanvas.width = 80;
-      eqCanvas.height = 36;
+    const eqCanvas = document.createElement("canvas");
+    eqCanvas.className="eq";
+    eqCanvas.width=80;
+    eqCanvas.height=36;
 
-      btn.onclick = async () => {
-        if (audioCtx.state === "suspended") await audioCtx.resume();
-        if (player.src.includes(encoded) && !player.paused) {
-          player.pause();
-          btn.textContent = "Play";
-          div.classList.remove("active");
-          currentEQ = null;
-          return;
-        }
-        player.src = BASE + encoded;
-        await player.play();
-        if (currentBtn) currentBtn.textContent = "Play";
-        if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-        btn.textContent = "Pause";
-        div.classList.add("active");
-        currentBtn = btn;
-        currentTrackDiv = div;
-        currentEQ = eqCanvas;
-        drawEQ(eqCanvas);
-      };
+    btn.onclick = async () => {
+      if(audioCtx.state==="suspended") await audioCtx.resume();
+      if(player.src.includes(encoded) && !player.paused){
+        player.pause();
+        btn.textContent="Play";
+        div.classList.remove("active");
+        currentEQ=null;
+        return;
+      }
+      player.src = BASE + encoded;
+      await player.play();
+      if(currentBtn) currentBtn.textContent="Play";
+      if(currentTrackDiv) currentTrackDiv.classList.remove("active");
+      btn.textContent="Pause";
+      div.classList.add("active");
+      currentBtn=btn;
+      currentTrackDiv=div;
+      currentEQ=eqCanvas;
+      drawEQ(eqCanvas);
+    };
 
-      controls.appendChild(btn);
-      controls.appendChild(eqCanvas);
-      div.appendChild(name);
-      div.appendChild(controls);
-      trackListDiv.appendChild(div);
-    });
-  })
-  .catch(err => console.error("Failed to fetch mp3 list:", err));
+    controls.appendChild(btn);
+    controls.appendChild(eqCanvas);
+    div.appendChild(name);
+    div.appendChild(controls);
+    trackListDiv.appendChild(div);
+  });
+})
+.catch(err=>console.error("Failed to fetch mp3 list:",err));
 
-async function uploadMP3() {
-  const fileInput = document.getElementById("uploadFile");
-  const status = document.getElementById("uploadStatus");
-  if (!fileInput.files.length) {
-    status.textContent = "Please select an MP3 file.";
-    return;
-  }
-  const file = fileInput.files[0];
-  if (!file.name.endsWith(".mp3")) {
-    status.textContent = "Only MP3 files are allowed.";
-    return;
-  }
-  const formData = new FormData();
-  formData.append("file", file);
-  status.textContent = "Uploading...";
-  try {
-    const res = await fetch(UPLOAD_API, { method: "POST", body: formData });
-    if (!res.ok) throw new Error("Upload failed");
-    status.textContent = "Upload complete! Refreshing...";
-    setTimeout(() => location.reload(), 1000);
-  } catch (err) {
+async function uploadMP3(){
+  const fileInput=document.getElementById("uploadFile");
+  const status=document.getElementById("uploadStatus");
+  if(!fileInput.files.length){ status.textContent="Please select an MP3 file."; return; }
+  const file=fileInput.files[0];
+  if(!file.name.endsWith(".mp3")){ status.textContent="Only MP3 files are allowed."; return; }
+  const formData=new FormData();
+  formData.append("file",file);
+  status.textContent="Uploading...";
+  try{
+    const res=await fetch(UPLOAD_API,{method:"POST",body:formData});
+    if(!res.ok) throw new Error("Upload failed");
+    status.textContent="Upload complete! Refreshing...";
+    setTimeout(()=>location.reload(),1000);
+  }catch(err){
     console.error(err);
-    status.textContent = "Upload failed.";
+    status.textContent="Upload failed.";
   }
 }
 
-player.onended = () => {
-  if (currentBtn) currentBtn.textContent = "Play";
-  if (currentTrackDiv) currentTrackDiv.classList.remove("active");
-  currentEQ = null;
+player.onended=()=>{
+  if(currentBtn) currentBtn.textContent="Play";
+  if(currentTrackDiv) currentTrackDiv.classList.remove("active");
+  currentEQ=null;
 };
 </script>
-
 </body>
 </html>
